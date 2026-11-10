@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/identity"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform/realtime"
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/workers"
 )
 
 func env(key, fallback string) string {
@@ -78,10 +80,24 @@ func main() {
 			}
 		}()
 
-		mux := newMux(db.Ping, pingRedis, env("MEDIA_DIR", "./media"))
-		// Filled in once the workers module exists; until then /me returns worker: null.
-		noWorker := func(context.Context, int64) (any, error) { return nil, nil }
-		ids.Routes(mux, noWorker)
+		media := platform.Media{Dir: env("MEDIA_DIR", "./media")}
+		mux := newMux(db.Ping, pingRedis, media.Dir)
+
+		// AI endpoints: 20 calls a minute per user, to protect the gateway key.
+		aiLimit := platform.RateLimit(rdb, 20, time.Minute, func(r *http.Request) string {
+			if p, ok := platform.PrincipalFrom(r.Context()); ok {
+				return fmt.Sprintf("ai:%d", p.UserID)
+			}
+			return ""
+		})
+
+		// Stats, Reviews, PriceRange and Extract are wired as the reviews, jobs and ai modules land.
+		wks := workers.NewService(workers.Deps{DB: db, Media: media, Users: ids})
+		wks.Routes(mux, ids.Middleware, aiLimit)
+
+		ids.Routes(mux, func(ctx context.Context, userID int64) (any, error) {
+			return wks.Card(ctx, userID, nil)
+		})
 		mux.Handle("GET /api/ws", hub.Handler(func(r *http.Request) (int64, error) {
 			p, err := ids.Authenticate(r.Context(), platform.BearerToken(r))
 			return p.UserID, err
