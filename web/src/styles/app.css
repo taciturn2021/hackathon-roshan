@@ -162,6 +162,11 @@
 @media(min-width:900px){.card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .profile-strip{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 20px}
 .profile-strip h2{font:600 22px/1.3 var(--font-sans)}
+/* The name column needs real width before it shares a line: with .grow's 0 basis, phones 380-500px wide kept
+   the audio player on the same line and squeezed the name to one letter per line. Now the player wraps below. */
+.profile-strip>.grow{flex:1 1 180px}
+/* .worker [lang=en] sets English snippets to 16px; the name is a heading and keeps its size, with room above the Urdu line. */
+.worker .profile-strip h2[lang=en]{font-size:22px;line-height:1.3;margin-bottom:4px}
 .worker .panel h2{font-family:var(--font-sans)}
 
 /* Landing structure */
@@ -189,6 +194,11 @@
 @keyframes slide-in-rtl{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
 @keyframes ring{0%{box-shadow:0 0 0 0 var(--destructive-soft)}70%{box-shadow:0 0 0 16px transparent}100%{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){*,*::before{animation:none!important;transition:none!important}}
+/* Loading spinner (LoaderCircle gets .spin in Icon). It is the only sign that a tap registered, so it keeps
+   turning under reduced motion too, just slower. */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .8s linear infinite;transform-origin:center}
+@media(prefers-reduced-motion:reduce){.spin{animation:spin 1.6s linear infinite!important}}
 @media(max-width:479px){.app-action span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.app-action{width:44px;padding:0}}
 .worker .stat-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
 .tile-value{white-space:nowrap}
