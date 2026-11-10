@@ -16,19 +16,35 @@ function Brand() {
   )
 }
 
-/** The centre links; the phone menu also lists sign-in, which on wide screens is the button on the right. */
-function NavLinks({ onNavigate, withSignIn = false }: { onNavigate?: () => void; withSignIn?: boolean }) {
+/** The centre links. Sign-in is never a generic link: it is one of the two role doors (RoleDoors). */
+function NavLinks({ onNavigate, withApp = false }: { onNavigate?: () => void; withApp?: boolean }) {
   const t = useT()
   const me = useMe()
   return (
     <>
       <Link href="/#how-it-works" onClick={onNavigate}>{t('How it works', 'طریقہ کار')}</Link>
       <Link href="/#services" onClick={onNavigate}>{t('Trades', 'ہنر')}</Link>
-      <Link href="/worker/login" onClick={onNavigate}>{t('For workers', 'کاریگروں کے لیے')}</Link>
-      {withSignIn && (me
-        ? <Link href="/app" onClick={onNavigate}>{t('Open app', 'ایپ کھولیں')}</Link>
-        : <Link href="/login" onClick={onNavigate}>{t('Sign in', 'سائن اِن')}</Link>)}
+      {withApp && me && <Link href="/app" onClick={onNavigate}>{t('Open app', 'ایپ کھولیں')}</Link>}
     </>
+  )
+}
+
+/**
+ * The two ways in, named by who they are for, with picture, Urdu and English together, so a worker never
+ * lands on the customer page by tapping a generic "Sign in". `big` is the phone menu's full-width version.
+ */
+function RoleDoors({ onNavigate, big = false }: { onNavigate?: () => void; big?: boolean }) {
+  return (
+    <div className={big ? 'role-doors big' : 'role-doors'}>
+      <Link className="role-door customer-role" href="/login" onClick={onNavigate}>
+        <Icon name="House" />
+        <span className="role-words"><span className="role-en" lang="en" dir="ltr">Find a worker</span><span className="role-ur" lang="ur" dir="rtl">کاریگر ڈھونڈیں</span></span>
+      </Link>
+      <Link className="role-door worker-role" href="/worker/login" onClick={onNavigate}>
+        <Icon name="Wrench" />
+        <span className="role-words"><span className="role-en" lang="en" dir="ltr">I’m a worker</span><span className="role-ur" lang="ur" dir="rtl">میں کاریگر ہوں</span></span>
+      </Link>
+    </div>
   )
 }
 
@@ -51,7 +67,7 @@ export function Shell({ children }: { children: ReactNode }) {
           {!focused && <nav className="desktop-links" aria-label={t('Main navigation', 'مین مینو')}><NavLinks /></nav>}
           <div className="row">
             <LangSwitch />
-            {!focused && <Link className="header-pill" href={me ? '/app' : '/start'}>{me ? t('Open app', 'ایپ کھولیں') : t('Get started', 'شروع کریں')}</Link>}
+            {!focused && (me ? <Link className="header-pill" href="/app">{t('Open app', 'ایپ کھولیں')}</Link> : <RoleDoors />)}
             {!focused && <button ref={trigger} className="menu-button icon-button" type="button" aria-label={t('Open navigation', 'مینو کھولیں')} aria-controls="site-menu"
               aria-expanded="false" onClick={() => { menu.current?.showModal(); trigger.current?.setAttribute('aria-expanded', 'true') }}>
               <Icon name="Menu" />
@@ -64,8 +80,9 @@ export function Shell({ children }: { children: ReactNode }) {
           <Brand />
           <button className="icon-button" type="button" aria-label={t('Close navigation', 'مینو بند کریں')} onClick={close}><Icon name="X" /></button>
         </div>
+        {!me && <RoleDoors onNavigate={close} big />}
         <nav aria-label={t('Mobile navigation', 'موبائل مینو')}>
-          <NavLinks onNavigate={close} withSignIn />
+          <NavLinks onNavigate={close} withApp />
           {me && <a href="/" onClick={(e) => { e.preventDefault(); close(); signOut() }}>{t('Sign out', 'سائن آؤٹ')}</a>}
         </nav>
         <div style={{ marginTop: 24 }}><LangSwitch /></div>
