@@ -95,7 +95,7 @@ export function ProblemConfirm() {
           <div className="grow"><h2>{t(tr.en, `${tr.ur} کا کام`)}</h2><p className="caption muted">{draft.description ? t('Based on your description', 'آپ کی بتائی ہوئی بات کے مطابق') : t('Your choice', 'آپ کا انتخاب')}</p></div>
           <button className="icon-button" type="button" aria-label={t('Change trade', 'کام بدلیں')} onClick={() => setPicking(true)}><Icon name="Pencil" /></button>
         </div>
-        {draft.description && <p>{draft.description}</p>}
+        {draft.description && <p dir="auto">{draft.description}</p>}
       </section>
       <div className="stack-sm">
         <h3>{t('How urgent is it?', 'کتنی جلدی چاہیے؟')}</h3>

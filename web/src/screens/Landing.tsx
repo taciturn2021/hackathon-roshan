@@ -1,74 +1,118 @@
-import { Icon } from '../components/Icon'
+import { Icon, type IconName } from '../components/Icon'
 import { problemDraft } from '../lib/draft'
 import { useLang, useT } from '../lib/i18n'
 import { Link } from '../lib/router'
 import { TRADE_KEYS, TRADES } from '../lib/trades'
 
-// [number, [title en, ur], [text en, ur]]
-const steps: [string, [string, string], [string, string]][] = [
-  ['01', ['Tell us what’s wrong', 'بتائیں کیا خراب ہے'],
-    ['Type or speak in English, Urdu or Roman Urdu. We help you find the right trade.', 'انگریزی، اردو یا رومن اردو میں لکھیں یا بولیں۔ ہم صحیح کاریگر چننے میں مدد کرتے ہیں۔']],
-  ['02', ['Agree a price in chat', 'چیٹ میں قیمت طے کریں'],
-    ['Choose an available worker nearby. Discuss the job and accept a clear price offer.', 'قریب کا فارغ کاریگر چنیں۔ کام پر بات کریں اور صاف قیمت قبول کریں۔']],
-  ['03', ['Review the finished job', 'مکمل کام کا ریویو دیں'],
-    ['Your worker marks the job complete. Leave a review to help the next neighbour.', 'کاریگر بتاتا ہے کہ کام مکمل ہو گیا۔ ریویو لکھیں تاکہ اگلے پڑوسی کو مدد ملے۔']],
+type Pair = [string, string] // [English, Urdu]
+type Step = { icon: IconName; title: Pair; text: Pair }
+
+const CUSTOMER_STEPS: Step[] = [
+  { icon: 'Mic', title: ['Say what is wrong', 'بتائیں کیا خراب ہے'], text: ['Type it or speak it, in English, Urdu or Roman Urdu.', 'لکھیں یا بولیں، اردو، رومن اردو یا انگریزی میں۔'] },
+  { icon: 'MapPin', title: ['See who is free nearby', 'دیکھیں قریب کون فارغ ہے'], text: ['Only workers who can come now, nearest first.', 'صرف وہ کاریگر جو ابھی آ سکتے ہیں، سب سے قریب والا پہلے۔'] },
+  { icon: 'Banknote', title: ['Agree the price, then book', 'قیمت طے کریں، پھر بک کریں'], text: ['Nothing is booked until one of you accepts the price.', 'جب تک قیمت منظور نہ ہو، کچھ بک نہیں ہوتا۔'] },
+]
+const WORKER_STEPS: Step[] = [
+  { icon: 'Mic', title: ['Answer 4 questions by voice', 'بول کر 4 سوالوں کے جواب دیں'], text: ['No typing and no forms. Your profile is made from your answers.', 'نہ لکھنا، نہ فارم بھرنا۔ آپ کے جوابوں سے پروفائل بن جاتا ہے۔'] },
+  { icon: 'Bell', title: ['Go online, jobs come to you', 'آن لائن ہوں، کام خود آئے گا'], text: ['A bell rings and the job is read out to you in Urdu.', 'گھنٹی بجتی ہے اور کام اردو میں سنایا جاتا ہے۔'] },
+  { icon: 'CircleCheck', title: ['Send your price, do the work', 'قیمت بھیجیں، کام کریں'], text: ['One job at a time, so nobody is double booked.', 'ایک وقت میں ایک کام، تاکہ کوئی دو جگہ بک نہ ہو۔'] },
+]
+const FACTS: { icon: IconName; text: Pair }[] = [
+  { icon: 'Clock', text: ['Only workers who are free right now are shown', 'صرف وہی کاریگر دکھائے جاتے ہیں جو ابھی فارغ ہیں'] },
+  { icon: 'Banknote', text: ['The price is agreed in chat before anything is booked', 'بکنگ سے پہلے چیٹ میں قیمت طے ہوتی ہے'] },
+  { icon: 'Star', text: ['Reviews come only from completed jobs', 'ریویو صرف مکمل کاموں کے بعد دیے جاتے ہیں'] },
+  { icon: 'Volume2', text: ['Workers can hear every job and message in Urdu', 'کاریگر ہر کام اور میسج اردو میں سن سکتے ہیں'] },
 ]
 
 export function Landing() {
   const t = useT()
   const ur = useLang() === 'ur'
+  const forward: IconName = ur ? 'ArrowLeft' : 'ArrowRight'
+  const steps = (list: Step[]) => (
+    <ol className="lp-steps">
+      {list.map((s, i) => (
+        <li key={s.title[0]}>
+          <span className="lp-step-icon"><Icon name={s.icon} /></span>
+          <div><h3><span className="digits">{i + 1}.</span> {t(...s.title)}</h3><p>{t(...s.text)}</p></div>
+        </li>
+      ))}
+    </ol>
+  )
+
   return (
-    <main id="main-content">
-      <section className="home-hero">
-        <iframe src="/mesh-gradient.html" title={t('Decorative Mint mesh gradient', 'سجاوٹی پس منظر')} aria-hidden="true" tabIndex={-1} />
-        <div className="site-container hero-grid">
-          <div className="hero-copy">
-            <p className="eyebrow">{t('Islamabad & Rawalpindi · روشن روزگار', 'اسلام آباد اور راولپنڈی · روشن روزگار')}</p>
-            <h1>{t('Good hands.', 'اچھے کاریگر۔')}<br /><span>{t('Right around you.', 'آپ کے آس پاس۔')}</span></h1>
-            <p className="hero-description">
-              {t('A leaking tap. A quiet AC. A job that needs doing.', 'نل ٹپک رہا ہے۔ اے سی بند ہے۔ کوئی کام کروانا ہے۔')}<br />
-              {t('Find local skilled workers. Talk it through.', 'قریب کے ماہر کاریگر ڈھونڈیں۔ بات کریں۔')}<br />
-              {t('Agree a price, then get it done.', 'قیمت طے کریں، پھر کام کروائیں۔')}
-            </p>
-            <div className="hero-actions">
-              <Link className="button" href="/app/find">{t('Describe your problem', 'اپنا مسئلہ بتائیں')} <Icon name={ur ? 'ArrowLeft' : 'ArrowRight'} /></Link>
-              <Link className="worker-entry" href="/worker/login">{t('Here to find work?', 'کام ڈھونڈ رہے ہیں؟')} <span>{t('Join as a worker →', 'کاریگر بن کر شامل ہوں ←')}</span></Link>
-            </div>
-            <div className="hero-footnote">
-              <span><Icon name="Mic" /> {t('Workers answer by voice in Urdu', 'کاریگر اردو میں بول کر جواب دیتے ہیں')}</span>
-              <span><Icon name="MapPin" /> {t('Nearest free workers first', 'سب سے قریب فارغ کاریگر پہلے')}</span>
-              <span><Icon name="Check" /> {t('Price agreed before booking', 'بکنگ سے پہلے قیمت طے')}</span>
+    <main id="main-content" className="lp">
+      <section className="lp-hero">
+        <div className="site-container lp-hero-grid">
+          <div className="lp-hero-copy">
+            <p className="lp-kicker">{t('Islamabad & Rawalpindi', 'اسلام آباد اور راولپنڈی')}</p>
+            <h1>
+              {t('Tap leaking? AC not cooling?', 'نل ٹپک رہا ہے؟ اے سی ٹھنڈا نہیں کر رہا؟')}
+              <span>{t('A good worker is a few streets away.', 'اچھا کاریگر چند گلیاں دور ہے۔')}</span>
+            </h1>
+            <p className="lp-lede">{t(
+              'Tell us the problem, see who is free near you right now, and agree the price before you book.',
+              'مسئلہ بتائیں، دیکھیں کہ آپ کے قریب ابھی کون فارغ ہے، اور بک کرنے سے پہلے قیمت طے کریں۔',
+            )}</p>
+            <div className="lp-doors">
+              <Link className="lp-door primary" href="/app/find">
+                <span className="lp-door-icon"><Icon name="House" /></span>
+                <span><strong>{t('I need a worker', 'مجھے کاریگر چاہیے')}</strong><small>{t('Describe your problem', 'اپنا مسئلہ بتائیں')}</small></span>
+                <Icon name={forward} />
+              </Link>
+              <Link className="lp-door" href="/worker/login">
+                <span className="lp-door-icon"><Icon name="Wrench" /></span>
+                <span><strong>{t('I am a worker', 'میں کاریگر ہوں')}</strong><small>{t('Join by voice, get jobs', 'بول کر شامل ہوں، کام لیں')}</small></span>
+                <Icon name={forward} />
+              </Link>
             </div>
           </div>
-          <div className="hero-visual">
-            <img src="/craft-hero.png" width={1536} height={1024}
-              alt={t('Worn hand tools, copper pipes and green leaves arranged on limestone', 'پتھر پر رکھے پرانے اوزار، تانبے کے پائپ اور سبز پتے')} />
-            <div className="craft-label">
-              <span>{t('Five trades, one request', 'پانچ ہنر، ایک درخواست')}</span>
-              <strong>{t('From a leaking tap', 'ٹپکتے نل سے')}<br />{t('to a quiet AC', 'بند اے سی تک')}</strong>
+
+          {/* The product itself, not a stock picture: one request from first message to agreed price. */}
+          <figure className="lp-demo" aria-label={t('Example of one request', 'ایک درخواست کی مثال')}>
+            <figcaption>{t('Example request', 'مثال')}</figcaption>
+            <p className="lp-bubble" dir="auto">Kitchen ka nalka leak ho raha hai, abhi koi aa jaye</p>
+            <div className="lp-chip-row">
+              <span className="lp-chip"><Icon name={TRADES.plumber.icon} />{t(TRADES.plumber.en, 'پلمبر')}</span>
+              <span className="lp-chip warn">{t('Now', 'ابھی')}</span>
+              <span className="lp-chip digits">Rs 1,250–2,300</span>
+            </div>
+            <div className="lp-worker">
+              <span className="avatar">AR</span>
+              <div>
+                <strong lang="en" dir="ltr">Abdul Rehman</strong>
+                <small><span className="digits">1.2 km</span> · <Icon name="Star" className="icon-sm" /> <span className="digits">4.7</span> · {t('free now', 'ابھی فارغ')}</small>
+              </div>
+            </div>
+            <div className="lp-offer">
+              <span>{t('His price', 'ان کی قیمت')}</span>
+              <strong className="digits">Rs 1,500</strong>
+              <span className="lp-accept"><Icon name="Check" />{t('Accept', 'منظور')}</span>
+            </div>
+          </figure>
+        </div>
+      </section>
+
+      <section className="lp-section" id="how-it-works">
+        <div className="site-container">
+          <h2>{t('How it works', 'یہ کیسے کام کرتا ہے')}</h2>
+          <div className="lp-two">
+            <div className="lp-panel">
+              <p className="lp-panel-tag"><Icon name="House" />{t('If you need help at home', 'اگر آپ کو گھر پر کام کروانا ہے')}</p>
+              {steps(CUSTOMER_STEPS)}
+              <Link className="button full" href="/app/find">{t('Describe your problem', 'اپنا مسئلہ بتائیں')}<Icon name={forward} /></Link>
+            </div>
+            <div className="lp-panel worker-side">
+              <p className="lp-panel-tag"><Icon name="Wrench" />{t('If you are a skilled worker', 'اگر آپ کاریگر ہیں')}</p>
+              {steps(WORKER_STEPS)}
+              <Link className="button outline full" href="/worker/login">{t('Join as a worker', 'کاریگر بن کر شامل ہوں')}<Icon name={forward} /></Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="how-section" id="how-it-works">
-        <div className="site-container home-section">
-          <div className="section-intro">
-            <div><p className="eyebrow">{t('How it works', 'طریقہ کار')}</p><h2>{t('From problem', 'مسئلے سے')}<br />{t('to finished job', 'مکمل کام تک')}</h2></div>
-            <p>{t('Stay in control from your first message', 'پہلے میسج سے آخری ریویو تک')}<br />{t('to the final review.', 'سب کچھ آپ کے ہاتھ میں۔')}</p>
-          </div>
-          <div className="how-grid">
-            {steps.map(([n, title, text]) => <article key={n}><span className="step-number" lang="en" dir="ltr">{n}</span><h3>{t(...title)}</h3><p>{t(...text)}</p></article>)}
-          </div>
-        </div>
-      </section>
-
-      <section className="trades-band" id="services">
-        <div className="home-section site-container">
-          <div className="section-intro">
-            <div><p className="eyebrow">{t('Trades', 'ہنر')}</p><h2>{t('Who do you need today?', 'آج آپ کو کس کی ضرورت ہے؟')}</h2></div>
-            <p>{t('Five skilled trades.', 'پانچ طرح کے ماہر کاریگر۔')}<br />{t('One easier way to find the right person.', 'صحیح بندہ ڈھونڈنے کا آسان طریقہ۔')}</p>
-          </div>
+      <section className="lp-section tinted" id="services">
+        <div className="site-container">
+          <h2>{t('Who do you need today?', 'آج آپ کو کس کی ضرورت ہے؟')}</h2>
           <div className="trade-grid">
             {TRADE_KEYS.map((k) => (
               <Link key={k} className="service-tile" href="/app/find/confirm"
@@ -76,22 +120,18 @@ export function Landing() {
                 <span className="service-icon"><Icon name={TRADES[k].icon} /></span>
                 <h3>{t(TRADES[k].en, TRADES[k].ur)}</h3>
                 <p>{t(TRADES[k].blurb, TRADES[k].blurbUr)}</p>
-                <span className="service-arrow"><Icon name="ArrowUpRight" /></span>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="trust-section">
+      <section className="lp-section">
         <div className="site-container">
-          <p className="eyebrow">{t('Trust', 'بھروسہ')}</p>
-          <h2>{t('Clear prices', 'صاف قیمت')}<br />{t('and reviews from completed jobs', 'اور مکمل کاموں کے ریویو')}</h2>
-          <p>{t(
-            'Hear a worker’s introduction, look at their experience and read what previous customers have shared. Agree the scope before you book. Workers join by answering four short questions in Urdu.',
-            'کاریگر کا تعارف سنیں، اس کا تجربہ دیکھیں اور پڑھیں کہ پہلے گاہکوں نے کیا کہا۔ بکنگ سے پہلے طے کریں کہ کام کیا ہے۔ کاریگر اردو میں چار چھوٹے سوالوں کے جواب دے کر شامل ہوتے ہیں۔',
-          )}</p>
-          <Link className="button" href="/app/find">{t('Start your first request', 'اپنی پہلی درخواست شروع کریں')}</Link>
+          <h2>{t('Fair for both sides', 'دونوں کے لیے منصفانہ')}</h2>
+          <ul className="lp-facts">
+            {FACTS.map((f) => <li key={f.text[0]}><Icon name={f.icon} /><span>{t(...f.text)}</span></li>)}
+          </ul>
         </div>
       </section>
     </main>

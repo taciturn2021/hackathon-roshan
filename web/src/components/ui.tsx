@@ -132,7 +132,7 @@ export function JobCard({ job, worker = false }: { job: Job; worker?: boolean })
           <AudioMessage url={job.brief_audio_url} ur />
           {job.brief_ur && <p className="urdu-message">{job.brief_ur}</p>}
         </>
-      ) : job.description && <p className="muted">{job.description}</p>}
+      ) : job.description && <p className="muted" dir="auto">{job.description}</p>}
     </section>
   )
 }

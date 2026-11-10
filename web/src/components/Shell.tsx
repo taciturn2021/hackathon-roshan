@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { useToast } from '../lib/audio'
 import { MOCK } from '../lib/api'
 import { LangSwitch, useT } from '../lib/i18n'
-import { Link } from '../lib/router'
+import { Link, useLocation } from '../lib/router'
 import { signOut, useMe } from '../lib/session'
 import { Icon } from './Icon'
 
@@ -37,21 +37,24 @@ export function Shell({ children }: { children: ReactNode }) {
   const menu = useRef<HTMLDialogElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const toast = useToast()
+  const { path } = useLocation()
+  // Signing in and joining are single tasks: the marketing links and footer would only distract.
+  const focused = /^\/(start|login|signup|worker)(\/|$)/.test(path)
   const close = () => { menu.current?.close(); trigger.current?.focus() }
   return (
     <>
       <a className="skip-link" href="#main-content">{t('Skip to content', 'سیدھا مواد پر جائیں')}</a>
-      <header className="site-header">
+      <header className={`site-header ${focused ? 'focused' : ''}`}>
         <div className="site-container header-inner">
           <Brand />
-          <nav className="desktop-links" aria-label={t('Main navigation', 'مین مینو')}><NavLinks /></nav>
+          {!focused && <nav className="desktop-links" aria-label={t('Main navigation', 'مین مینو')}><NavLinks /></nav>}
           <div className="row">
             <LangSwitch />
-            {!me && <Link className="button header-cta" href="/start">{t('Get started', 'شروع کریں')}</Link>}
-            <button ref={trigger} className="menu-button icon-button" type="button" aria-label={t('Open navigation', 'مینو کھولیں')} aria-controls="site-menu"
+            {!me && !focused && <Link className="button header-cta" href="/start">{t('Get started', 'شروع کریں')}</Link>}
+            {!focused && <button ref={trigger} className="menu-button icon-button" type="button" aria-label={t('Open navigation', 'مینو کھولیں')} aria-controls="site-menu"
               aria-expanded="false" onClick={() => { menu.current?.showModal(); trigger.current?.setAttribute('aria-expanded', 'true') }}>
               <Icon name="Menu" />
-            </button>
+            </button>}
           </div>
         </div>
       </header>
@@ -67,7 +70,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div style={{ marginTop: 24 }}><LangSwitch /></div>
       </dialog>
       {children}
-      <footer className="site-footer">
+      {!focused && <footer className="site-footer">
         <div className="site-container footer-grid">
           <div>
             <Brand />
@@ -93,7 +96,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <span lang="en" dir="ltr">© 2026 Roshan Rozgar</span>
           {MOCK && <span>{t('Demo mode · Fictional people and job data · No live bookings', 'ڈیمو موڈ · فرضی لوگ اور فرضی کام · اصل بکنگ نہیں')}</span>}
         </div>
-      </footer>
+      </footer>}
       <div id="preview-toast" role="status" hidden={!toast}>{toast}</div>
     </>
   )

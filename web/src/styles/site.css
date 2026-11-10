@@ -48,7 +48,7 @@
   --shadow-md: 0 4px 12px 0 rgb(15 31 23 / .1);
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: ui-monospace, Consolas, monospace;
-  --font-urdu: "Noto Nastaliq Urdu", serif;
+  --font-urdu: "Inter", "Noto Nastaliq Urdu", serif;
   --radius: 1rem;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }

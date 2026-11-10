@@ -240,3 +240,71 @@
 .flow-steps li.done>span{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
 .flow-steps li.current{color:var(--foreground);font-weight:600}
 .flow-steps li.current>span{border-color:var(--highlight);background:var(--warning-soft);color:var(--warning-foreground)}
+
+/* ---------- Landing page ---------- */
+.lp h2{font:700 28px/1.2 var(--font-sans);letter-spacing:-.01em;margin:0 0 24px}
+html[lang=ur] .lp h1,html[lang=ur] .lp h2,html[lang=ur] .lp h3,html[lang=ur] .lp p,html[lang=ur] .lp strong,html[lang=ur] .lp small,html[lang=ur] .lp li,html[lang=ur] .lp .button,html[lang=ur] .lp figcaption,html[lang=ur] .lp-chip,html[lang=ur] .lp-offer span{font-family:var(--font-urdu);line-height:2}
+.lp-hero{background:var(--sidebar-deep);color:var(--sidebar-text)}
+.lp-hero-grid{display:grid;gap:32px;padding-block:40px 48px}
+.lp-kicker{display:inline-block;margin:0;padding:4px 12px;border:1px solid var(--deep-line);border-radius:999px;font-size:13px;color:var(--sidebar-muted)}
+.lp-hero h1{margin:16px 0 0;font:700 34px/1.15 var(--font-sans);letter-spacing:-.02em}
+.lp-hero h1 span{display:block;margin-top:8px;color:#FCD34D}
+.lp-lede{margin:16px 0 0;max-width:46ch;font-size:17px;line-height:1.6;color:var(--sidebar-muted)}
+.lp-doors{display:grid;gap:12px;margin-top:28px}
+.lp-door{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;min-height:76px;padding:14px 16px;border-radius:16px;border:2px solid var(--deep-line);color:var(--sidebar-text);text-decoration:none;transition:transform .12s var(--ease),background-color .12s var(--ease)}
+.lp-door:hover{background:var(--deep-hover);transform:translateY(-1px)}
+.lp-door.primary{background:var(--card);border-color:var(--card);color:var(--sidebar-deep)}
+.lp-door.primary:hover{background:var(--accent)}
+.lp-door strong{display:block;font-size:18px;line-height:1.3}
+.lp-door small{display:block;font-size:14px;opacity:.8}
+.lp-door-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--deep-hover)}
+.lp-door.primary .lp-door-icon{background:var(--accent);color:var(--primary)}
+.lp-demo{margin:0;display:grid;gap:12px;padding:20px;border-radius:24px;background:var(--card);color:var(--foreground);box-shadow:0 24px 48px -24px rgb(0 0 0 / .5)}
+.lp-demo figcaption{font:600 12px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted-foreground)}
+.lp-bubble{justify-self:end;margin:0;max-width:85%;padding:12px 14px;border-radius:16px 16px 4px 16px;background:var(--primary);color:var(--primary-foreground);font-size:15px;line-height:1.5}
+.lp-chip-row{display:flex;flex-wrap:wrap;gap:8px}
+.lp-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--accent);color:var(--accent-foreground);font-size:13px;font-weight:600}
+.lp-chip svg{width:16px;height:16px}
+.lp-chip.warn{background:var(--warning-soft);color:var(--warning-foreground)}
+.lp-worker{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:16px}
+.lp-worker strong{display:block}
+.lp-worker small{display:flex;align-items:center;gap:4px;color:var(--muted-foreground);font-size:13px}
+.lp-offer{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 12px;padding:12px 14px;border-radius:16px;background:var(--warning-soft);color:var(--warning-foreground)}
+.lp-offer>span:first-child{font-size:13px;grid-column:1}
+.lp-offer strong{grid-column:1;font-size:22px;line-height:1.2}
+.lp-accept{grid-column:2;grid-row:1 / span 2;display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:12px;background:var(--primary);color:var(--primary-foreground);font-weight:600;font-size:14px}
+.lp-accept svg{width:18px;height:18px}
+.lp-section{padding-block:48px}
+.lp-section.tinted{background:var(--accent)}
+.lp-two{display:grid;gap:16px}
+.lp-panel{display:flex;flex-direction:column;gap:20px;padding:20px;border-radius:20px;background:var(--card);border:1px solid var(--border)}
+.lp-panel.worker-side{background:var(--warning-soft);border-color:#FDE68A}
+.lp-panel-tag{display:flex;align-items:center;gap:8px;margin:0;font-weight:700;font-size:16px}
+.lp-steps{display:grid;gap:16px;margin:0;padding:0;list-style:none;flex:1}
+.lp-steps li{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.lp-step-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--accent);color:var(--primary)}
+.worker-side .lp-step-icon{background:var(--card);color:var(--warning-foreground)}
+.lp-steps h3{margin:0;font-size:17px;line-height:1.35}
+.lp-steps p{margin:2px 0 0;font-size:14px;line-height:1.5;color:var(--muted-foreground)}
+.lp-facts{display:grid;gap:12px;margin:0;padding:0;list-style:none}
+.lp-facts li{display:flex;align-items:center;gap:12px;padding:16px;border-radius:16px;background:var(--card);border:1px solid var(--border);font-weight:500}
+.lp-facts svg{flex-shrink:0;color:var(--primary)}
+@media(min-width:640px){.lp-doors{grid-template-columns:1fr 1fr}.lp-facts{grid-template-columns:1fr 1fr}}
+@media(min-width:960px){
+  .lp h2{font-size:36px}
+  .lp-hero-grid{grid-template-columns:1.2fr .8fr;align-items:center;gap:56px;padding-block:72px 80px}
+  .lp-hero h1{font-size:52px}
+  .lp-two{grid-template-columns:1fr 1fr;gap:24px}
+  .lp-panel{padding:28px}
+  .lp-section{padding-block:72px}
+}
+
+/* ---------- Consistency ---------- */
+/* Stat tiles share the row evenly whatever their number, so there is never an orphan tile. */
+.stat-tiles,.worker .stat-tiles{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}
+/* On a phone a task screen shows the task only; the side guide is for wide screens. */
+@media(max-width:959px){.task-layout>.support-panel:not(.job-aside){display:none}}
+/* Back button in the app bar, on every screen below a top-level one. */
+.app-back{flex-shrink:0}
+/* Sign-in and sign-up are focused screens: brand and language only. */
+.site-header.focused .header-inner{justify-content:space-between}
