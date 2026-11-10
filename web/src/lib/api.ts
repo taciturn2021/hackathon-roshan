@@ -25,6 +25,8 @@ export const isWorkerBusy = (e: unknown) => e instanceof ApiError && (e.code ?? 
 async function http<T>(method: string, path: string, body?: unknown): Promise<T> {
   const isForm = body instanceof FormData
   const token = await idToken()
+  // A failed action (not a background refresh) is announced so the person is told why; see lib/errors.ts.
+  const announce = (e: unknown) => { if (method !== 'GET') window.dispatchEvent(new CustomEvent('rr:error', { detail: e })) }
   const res = await fetch('/api' + path, {
     method,
     headers: {
@@ -32,13 +34,15 @@ async function http<T>(method: string, path: string, body?: unknown): Promise<T>
       ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}),
     },
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
-  })
+  }).catch((e: unknown) => { announce(e); throw e })
   if (!res.ok) {
     // The API answers errors as {"error": code, "message": text}.
     const e = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
     // Signed out or expired: session.ts clears the stored user, which sends the visitor to sign-in.
     if (res.status === 401) window.dispatchEvent(new Event('rr:signed-out'))
-    throw new ApiError(res.status, e.message ?? res.statusText, e.error)
+    const err = new ApiError(res.status, e.message ?? res.statusText, e.error)
+    if (res.status !== 401) announce(err) // a 401 already sends the visitor to sign-in
+    throw err
   }
   return res.json() as Promise<T>
 }

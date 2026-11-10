@@ -8,18 +8,18 @@ import { Task } from '../components/Task'
 import { GoogleMark, StatePanel } from '../components/ui'
 import { playPrompt } from '../lib/audio'
 import { Link, navigate, useLocation } from '../lib/router'
+import { errorText } from '../lib/errors'
 import { auth } from '../lib/firebase'
 import { useLang, useT } from '../lib/i18n'
 import { FAKE_AUTH, safeNext, signIn } from '../lib/session'
 
 /** Runs a Firebase sign-in step; mock and dev modes skip it and go straight to the API session. */
 const firebase = async (step: () => Promise<unknown>) => { if (!FAKE_AUTH) await step() }
-/** Logs a sign-in failure and returns its code (e.g. `auth/too-many-requests`) to show under the message. */
-function failure(e: unknown): string {
+/** Keeps the failure for the screen (shown as a sentence by errorText) and logs the detail for developers. */
+function failure(e: unknown): unknown {
   console.error('sign-in failed', e)
-  return (e as { code?: string }).code ?? (e instanceof Error ? e.message : String(e))
+  return e
 }
-const Why = ({ code }: { code: string }) => <p className="caption muted" lang="en" dir="ltr" style={{ textAlign: 'center' }}>{code}</p>
 const google = () => firebase(() => signInWithPopup(auth(), new GoogleAuthProvider()))
 
 export function RolePick() {
@@ -53,7 +53,7 @@ function PhoneForm({ ur = false, onDone }: { ur?: boolean; onDone: () => Promise
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
-  const [why, setWhy] = useState('')
+  const [why, setWhy] = useState<unknown>(null)
   const sent = useRef<ConfirmationResult | null>(null)
   const captcha = useRef<RecaptchaVerifier | null>(null)
 
@@ -84,16 +84,13 @@ function PhoneForm({ ur = false, onDone }: { ur?: boolean; onDone: () => Promise
   const digits = (set: (v: string) => void, max: number) => (e: { target: { value: string } }) => set(e.target.value.replace(/\D/g, '').slice(0, max))
   const busy = state === 'loading'
   const title = step === 'phone' ? t('Phone number', 'اپنا فون نمبر لکھیں') : t('Code from the SMS', 'میسج میں آیا کوڈ لکھیں')
-  const failed = step === 'phone'
-    ? t('That didn’t work. Check the number and try again.', 'نمبر نہیں چلا، دوبارہ کوشش کریں')
-    : t('That didn’t work. Check the code and try again.', 'کوڈ غلط ہے، دوبارہ لکھیں')
+  const failed = errorText(why, t)
   const big = { fontSize: 24, minWidth: 0 }
 
   return (
     <form className="stack" onSubmit={submit}>
       {ur ? <div className="section-heading"><h1>{title}</h1></div> : <span className="field">{title}</span>}
-      {state === 'error' && (ur ? <StatePanel kind="error" title={failed} /> : <span className="field-error">{failed}</span>)}
-      {state === 'error' && <Why code={why} />}
+      {state === 'error' && (ur ? <StatePanel kind="error" title={failed} /> : <span className="field-error" role="alert">{failed}</span>)}
       {step === 'phone' ? (
         <div className="row" dir="ltr" lang="en">
           <span className="digits" style={big}>+92</span>
@@ -116,7 +113,7 @@ function PhoneForm({ ur = false, onDone }: { ur?: boolean; onDone: () => Promise
 export function WorkerSignIn() {
   const t = useT()
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
-  const [why, setWhy] = useState('')
+  const [why, setWhy] = useState<unknown>(null)
   async function finish() {
     const me = await signIn('worker')
     navigate(me.worker ? '/app' : '/worker/onboard')
@@ -135,7 +132,7 @@ export function WorkerSignIn() {
   return (
     <Task screen="02-worker-signin" worker prompt="signin">
       <PhoneForm ur onDone={finish} />
-      {state === 'error' && <><StatePanel kind="error" title={t('Try again', 'دوبارہ کوشش کریں')} /><Why code={why} /></>}
+      {state === 'error' && <><StatePanel kind="error" title={errorText(why, t)} /></>}
       <button className="button outline full" type="button" onClick={withGoogle} disabled={state === 'loading'}>
         <GoogleMark /><span lang="en" dir="ltr">Continue with Google</span>
       </button>
@@ -151,7 +148,7 @@ export function CustomerSignIn({ mode }: { mode: 'signin' | 'signup' }) {
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
-  const [why, setWhy] = useState('')
+  const [why, setWhy] = useState<unknown>(null)
   const signup = mode === 'signup'
 
   const validate = () => {
@@ -179,8 +176,7 @@ export function CustomerSignIn({ mode }: { mode: 'signin' | 'signup' }) {
   if (state === 'error') return (
     <Task screen="03-customer-signin">
       <StatePanel kind="error" title={t('We couldn’t sign you in', 'سائن اِن نہیں ہو سکا')}
-        text={t('Check your email and password, then try again.', 'اپنی ای میل اور پاس ورڈ دیکھیں، پھر دوبارہ کوشش کریں۔')} />
-      <Why code={why} />
+        text={errorText(why, t)} />
       <button className="button full" type="button" onClick={() => setState('idle')}><Icon name="RefreshCw" />{t('Try again', 'دوبارہ کوشش کریں')}</button>
     </Task>
   )
