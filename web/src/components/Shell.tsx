@@ -71,12 +71,11 @@ export function Shell({ children }: { children: ReactNode }) {
         <div style={{ marginTop: 24 }}><LangSwitch /></div>
       </dialog>
       {children}
-      {!focused && <footer className="site-footer">
+      {!focused && <div className="footer-wrap"><footer className="site-footer">
         <div className="site-container footer-grid">
           <div>
             <Brand />
             <p>{t('Local skills. Clear prices.', 'مقامی ہنر۔ صاف قیمت۔')}<br />{t('Work that earns trust.', 'کام جو بھروسہ بنائے۔')}</p>
-            <p>{t('Islamabad & Rawalpindi', 'اسلام آباد اور راولپنڈی')}</p>
           </div>
           <div>
             <h3>{t('For your home', 'آپ کے گھر کے لیے')}</h3>
@@ -89,15 +88,18 @@ export function Shell({ children }: { children: ReactNode }) {
             <Link href="/app">{t('Your availability', 'آپ کب فارغ ہیں')}</Link>
           </div>
           <div>
-            <h3>{t('Explore', 'مزید')}</h3><Link href="/#how-it-works">{t('How it works', 'طریقہ کار')}</Link>
+            <h3>{t('Explore', 'مزید')}</h3>
+            <Link href="/#how-it-works">{t('How it works', 'طریقہ کار')}</Link>
+            <Link href="/#services">{t('Trades', 'ہنر')}</Link>
             {me && <a href="/" onClick={(e) => { e.preventDefault(); signOut() }}>{t('Sign out', 'سائن آؤٹ')}</a>}
           </div>
         </div>
         <div className="site-container footer-bottom">
           <span lang="en" dir="ltr">© 2026 Roshan Rozgar</span>
+          <span>{t('Islamabad & Rawalpindi', 'اسلام آباد اور راولپنڈی')}</span>
           {MOCK && <span>{t('Demo mode · Fictional people and job data · No live bookings', 'ڈیمو موڈ · فرضی لوگ اور فرضی کام · اصل بکنگ نہیں')}</span>}
         </div>
-      </footer>}
+      </footer></div>}
       <div id="preview-toast" role="status" hidden={!toast}>{toast}</div>
     </>
   )

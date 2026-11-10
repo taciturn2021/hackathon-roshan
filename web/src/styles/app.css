@@ -402,3 +402,19 @@ html[lang=ur] .desktop-links a,html[lang=ur] .header-pill{font:500 17px/2 var(--
 .header-pill{display:none;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;background:#EFF1EE;color:var(--foreground);font:500 14px/1 var(--font-mono);text-decoration:none;white-space:nowrap;transition:background-color .12s var(--ease)}
 .header-pill:hover{background:#E2E6E0}
 @media(min-width:640px){.header-pill{display:inline-flex}}
+
+/* ---------- Footer: the same dark inset panel, mono labels and type as the page above it ---------- */
+.footer-wrap{background:var(--card);padding:0 12px 12px}
+.site-footer{padding:48px 8px 0;border-radius:24px;background:#102A1B;color:#fff}
+/* On the landing page the closing call to action and the footer read as one block. */
+.sp .sp-cta{margin-bottom:0;border-radius:24px 24px 0 0}
+.sp + .footer-wrap .site-footer{border-radius:0 0 24px 24px;border-top:1px dashed rgb(255 255 255 / .22)}
+.site-footer .wordmark{font-size:26px}
+.footer-grid p{margin-top:12px;font-size:15px;line-height:1.6;color:rgb(255 255 255 / .65)}
+.footer-grid h3{margin:0;font:500 11px/1.4 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:rgb(255 255 255 / .55)}
+.footer-grid>div>a:not(.brand){min-height:40px;font:500 14px/1.3 var(--font-mono);color:rgb(255 255 255 / .9);transition:color .12s var(--ease)}
+.footer-grid>div>a:not(.brand):hover{color:#C8F169}
+.footer-bottom{border-top:1px dashed rgb(255 255 255 / .22);font:500 12px/1.4 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:rgb(255 255 255 / .55)}
+html[lang=ur] .footer-grid h3{font:600 16px/2 var(--font-urdu);letter-spacing:0}
+html[lang=ur] .footer-grid p,html[lang=ur] .footer-grid>div>a:not(.brand),html[lang=ur] .footer-bottom{font:500 17px/2 var(--font-urdu);letter-spacing:0}
+@media(min-width:960px){.footer-wrap{padding:0 24px 24px}.site-footer{padding:64px 24px 0}}
