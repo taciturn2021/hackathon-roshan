@@ -3,3 +3,5 @@ node_modules/
 dist/
 media/
 .DS_Store
+/tmp/
+/.playwright-mcp/
