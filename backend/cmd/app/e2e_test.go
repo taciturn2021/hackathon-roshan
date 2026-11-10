@@ -15,8 +15,10 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/hibiken/asynq"
 
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/identity"
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform/queue"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/testdb"
 )
 
@@ -24,7 +26,26 @@ import (
 // Postgres and Redis (WebSocket events go through Redis pub/sub exactly as in production).
 func TestFullFlow(t *testing.T) {
 	db, rdb := testdb.New(t), testdb.Redis(t)
-	a := buildAPI(db, rdb, identity.DevVerifier(nil), t.TempDir(), nil)
+	ro := rdb.Options()
+	qopt := asynq.RedisClientOpt{Addr: ro.Addr, DB: ro.DB}
+	q := queue.NewClient(qopt)
+	defer q.Close()
+	insp := asynq.NewInspector(qopt)
+	defer insp.Close()
+	queued := func(typ string, payload string) {
+		t.Helper()
+		tasks, err := insp.ListPendingTasks("default")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, ti := range tasks {
+			if ti.Type == typ && string(ti.Payload) == payload {
+				return
+			}
+		}
+		t.Fatalf("task %s %s was not queued", typ, payload)
+	}
+	a := buildAPI(newServices(db, rdb, identity.DevVerifier(nil), t.TempDir(), q), nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go a.hub.Run(ctx, rdb)
@@ -107,6 +128,13 @@ func TestFullFlow(t *testing.T) {
 	st, obj, _ = call("GET", "/api/jobs", "", nil)
 	must(401, st, "no token", obj)
 
+	// --- Customer describes the problem (no AI wired here: falls back to the trade picker, never fails).
+	st, obj, _ = call("POST", "/api/problems", cTok, newMultipart(map[string]string{"text": "nalka tapak raha hai"}))
+	must(200, st, "describe problem", obj)
+	if obj["trade"] != nil || obj["urgency"] != "now" || obj["description"] != "nalka tapak raha hai" {
+		t.Fatalf("problem fallback: %v", obj)
+	}
+
 	// --- Customer requests the job; the worker hears about it over the WebSocket.
 	st, obj, _ = call("POST", "/api/jobs", cTok, map[string]any{
 		"worker_id": workerID, "trade": "plumber", "description": "Kitchen tap leaking", "urgency": "now",
@@ -115,6 +143,18 @@ func TestFullFlow(t *testing.T) {
 	must(201, st, "create job", obj)
 	jobID := id(obj)
 	events.expect(t, "job.created")
+	queued("job:brief", fmt.Sprintf(`{"job_id":%d}`, jobID))
+
+	// --- Worker replies with a voice note; its transcript is queued for the AI worker.
+	voice := newMultipart(nil)
+	voice.addFile(t, "audio", "note.webm", []byte("fake opus bytes"))
+	st, obj, _ = call("POST", fmt.Sprintf("/api/jobs/%d/messages", jobID), wTok, voice)
+	must(201, st, "voice note", obj)
+	if obj["kind"] != "voice" || obj["body"] != nil || !strings.HasPrefix(obj["audio_url"].(string), "/media/audio/") {
+		t.Fatalf("voice message: %v", obj)
+	}
+	queued("message:transcribe", fmt.Sprintf(`{"message_id":%d}`, id(obj)))
+	events.expect(t, "message.created")
 
 	// --- Worker makes an offer, customer accepts it: booked.
 	st, obj, _ = call("POST", fmt.Sprintf("/api/jobs/%d/messages", jobID), wTok, map[string]any{"kind": "offer", "offer_price": 1500})
@@ -144,6 +184,7 @@ func TestFullFlow(t *testing.T) {
 	mp := newMultipart(map[string]string{"rating": "5", "body": "Came in 20 minutes, fixed it properly"})
 	st, obj, _ = call("POST", fmt.Sprintf("/api/jobs/%d/review", jobID), cTok, mp)
 	must(201, st, "review", obj)
+	queued("review:analyze", fmt.Sprintf(`{"job_id":%d}`, jobID))
 	st, obj, _ = call("POST", fmt.Sprintf("/api/jobs/%d/review", jobID), cTok, newMultipart(map[string]string{"rating": "4"}))
 	must(409, st, "second review", obj)
 
@@ -155,7 +196,7 @@ func TestFullFlow(t *testing.T) {
 	}
 	st, obj, _ = call("GET", fmt.Sprintf("/api/jobs/%d", jobID), cTok, nil)
 	must(200, st, "job detail", obj)
-	if obj["job"].(map[string]any)["reviewed"] != true || len(obj["messages"].([]any)) != 1 {
+	if obj["job"].(map[string]any)["reviewed"] != true || len(obj["messages"].([]any)) != 2 {
 		t.Fatalf("job detail: %v", obj)
 	}
 	st, obj, _ = call("GET", "/api/me", wTok, nil)
@@ -168,17 +209,32 @@ func TestFullFlow(t *testing.T) {
 type multipartBody struct {
 	buf bytes.Buffer
 	ct  string
+	w   *multipart.Writer
 }
 
 func newMultipart(fields map[string]string) *multipartBody {
 	b := &multipartBody{}
-	w := multipart.NewWriter(&b.buf)
+	b.w = multipart.NewWriter(&b.buf)
 	for k, v := range fields {
-		w.WriteField(k, v)
+		b.w.WriteField(k, v)
 	}
-	w.Close()
-	b.ct = w.FormDataContentType()
+	b.w.Close()
+	b.ct = b.w.FormDataContentType()
 	return b
+}
+
+// addFile rebuilds the body with an extra file part (the writer is closed after fields).
+func (b *multipartBody) addFile(t *testing.T, field, name string, data []byte) {
+	t.Helper()
+	b.buf.Reset()
+	b.w = multipart.NewWriter(&b.buf)
+	fw, err := b.w.CreateFormFile(field, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fw.Write(data)
+	b.w.Close()
+	b.ct = b.w.FormDataContentType()
 }
 
 // eventLog records the event types a WebSocket client receives.
