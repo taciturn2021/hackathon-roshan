@@ -7,7 +7,7 @@ Worker screens show icon and number first, a few words of Urdu second, and a spe
 | # | Screen | Role | Primary action | Notes / states |
 |---|---|---|---|---|
 | 1 | Role pick | both | Tap picture: worker (tools) or customer (house) | No text needed |
-| 2 | Sign in | both | Worker: one big "Continue with Google" button. Customer: Google button, or email + password | Firebase Auth. Worker never types; error = shake + audio |
+| 2 | Sign in | both | Worker: phone number on the number pad, then the SMS code; or one big "Continue with Google" button. Customer: phone, Google, or email + password | Firebase Auth. Worker enters digits only, never letters; error = shake + audio |
 | 3 | Voice onboarding | worker | Answer four spoken questions one at a time: name, work, area, years | A question plays; worker holds the mic to answer; a tick appears and the next question plays at once (the answer is processed in the background, no spinner). Unclear answer → asked once more, then icon picker. Asks for location permission |
 | 4 | Profile confirm | worker | ✓ confirm or 🎤 redo | Shows trade icon, name, area, years; low confidence → 5 trade icons to tap |
 | 5 | Worker home | worker | Big online/offline toggle | New job: ringtone only, then a card with trade icon, distance, short Urdu text and a speaker button; busy state when on a job |

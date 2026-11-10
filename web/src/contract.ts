@@ -4,7 +4,7 @@ export type Trade = 'electrician' | 'plumber' | 'ac_technician' | 'carpenter' | 
 export type Urgency = 'now' | 'today' | 'flexible';
 export type JobStatus = 'requested' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 
-export type User = { id: number; email: string | null; role: 'worker' | 'customer'; name: string | null; photo_url: string | null };
+export type User = { id: number; email: string | null; phone: string | null; role: 'worker' | 'customer'; name: string | null; photo_url: string | null };
 
 export type OnboardField = 'name' | 'trade' | 'area' | 'years_exp';
 export type OnboardAnswer = {                // AI reading of one spoken answer; nothing is saved yet
