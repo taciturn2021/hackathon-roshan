@@ -5,9 +5,9 @@ The **what** (models, Jev decisions, inline vs queue, Urdu speech) is in `docs/2
 
 ## 0. Start here
 
-- **Branch from `abdullah`, not `main`.** `main` has no backend yet; it is in PR #1 until Humza merges it.
+- **Branch from `main`** (the backend was merged in PR #1):
   ```bash
-  git fetch origin && git switch -c nouman origin/abdullah
+  git fetch origin && git switch -c nouman origin/main
   ```
 - Your folders: `backend/internal/ai/`, `backend/internal/tasks/`, `backend/seed/`, `web/public/audio/`, `README.md`.
 - In `backend/cmd/app/main.go` you may edit **only the three marked spots** in section 4. Everything else in `cmd/`, `internal/{platform,identity,workers,jobs,reviews,problems}` and `db/` is Abdullah's: ask him for changes.
@@ -145,7 +145,7 @@ Rules so the demo works:
   curl -X POST localhost:8080/api/workers/onboard -H 'Authorization: Bearer dev:nouman-w' -F field=name -F audio=@clip.webm
   ```
   Queue tasks show up in asynqmon at http://localhost:8081.
-- **DB-backed tests** run on the server via `backend/scripts/test-on-server.sh` (needs server access; ask Abdullah to run it on your branch).
+- **Full suite including DB tests**: `backend/scripts/test-local.sh` (needs only Docker; throwaway Postgres + Redis). Without Docker, ask Abdullah to run `backend/scripts/test-on-server.sh` on your branch.
 - **Live**: https://hackathon.taciturn2021.dpdns.org — Abdullah redeploys after merges.
 
 ## 7. Done means
