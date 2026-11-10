@@ -6,3 +6,7 @@ media/
 /tmp/
 /.playwright-mcp/
 CLAUDE.md
+_archive
+# Local notes and tooling, not needed for integration
+progress.md
+.claude/

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Roshan Rozgar — Mesh Gradient</title>
+  <style>
+    :root { --c0: #F0FDF4; --c1: #DCFCE7; --c2: #BBF7D0; --c3: #86EFAC; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: linear-gradient(135deg, var(--c0), var(--c1) 35%, var(--c2) 68%, var(--c3)); }
+    #mesh-gradient { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <canvas id="mesh-gradient" aria-hidden="true"></canvas>
+  <script>
+    (() => {
+      'use strict';
+      // Colours mirror the app tokens (background, editorial, accent-border, ring-on-deep). A fixed pointer produces a 24-second loop.
+      const palettes = {
+        mint: ['#F0FDF4', '#DCFCE7', '#BBF7D0', '#86EFAC']
+      };
+      const name = new URLSearchParams(location.search).get('palette');
+      const palette = Object.hasOwn(palettes, name) ? palettes[name] : palettes.mint;
+      palette.forEach((color, i) => document.documentElement.style.setProperty(`--c${i}`, color));
+      const canvas = document.getElementById('mesh-gradient');
+      const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false });
+      if (!gl) { canvas.hidden = true; canvas.style.display = 'none'; return; }
+
+      const vertex = `
+        attribute vec2 a_position;
+        void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
+      `;
+      const fragment = `
+        precision highp float;
+        uniform vec2 u_resolution;
+        uniform vec2 u_pointer;
+        uniform float u_t;
+        uniform vec3 c0, c1, c2, c3;
+
+        float hash(vec2 p) {
+          vec3 v = fract(vec3(p.xyx) * 0.1031);
+          v += dot(v, v.yzx + 33.33);
+          return fract((v.x + v.y) * v.z);
+        }
+        float noise(vec2 p) {
+          vec2 i = floor(p), f = fract(p);
+          vec2 w = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), w.x),
+                     mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0)), w.x), w.y);
+        }
+        float fbm(vec2 p) {
+          float sum = 0.0, amplitude = 0.5;
+          for (int i = 0; i < 5; i++) {
+            sum += amplitude * noise(p);
+            p *= 2.02;
+            amplitude *= 0.5;
+          }
+          return sum / 0.96875;
+        }
+        float bayer2(vec2 p) { return 2.0 * p.x + 3.0 * p.y - 4.0 * p.x * p.y; }
+        float bayer4(vec2 pixel) {
+          vec2 p = mod(floor(pixel), 4.0);
+          float rank = 4.0 * bayer2(mod(p, 2.0)) + bayer2(floor(p / 2.0));
+          return (rank + 0.5) / 16.0 - 0.5;
+        }
+        void main() {
+          vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
+          p = p * 2.4 + u_pointer * 0.12;
+          vec2 orb = vec2(cos(u_t), sin(u_t)) * 0.55;
+          vec2 q = vec2(fbm(p + orb), fbm(p + orb.yx + 3.1));
+          vec2 r = vec2(fbm(p + 2.0*q + orb*1.3 + 1.7), fbm(p + 2.0*q - orb + 9.2));
+          float f = fbm(p + 1.8*r);
+          float g = clamp((f - 0.18) / 0.64, 0.0, 1.0);
+          float s = length(q);
+          vec3 col = mix(c0, c1, smoothstep(0.0, 0.45, g));
+          col = mix(col, c2, smoothstep(0.35, 0.78, g));
+          col = mix(col, c3, smoothstep(0.62, 1.0, g) * (0.55 + 0.45 * s));
+          col += bayer4(gl_FragCoord.xy) * 0.016;
+          gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+        }
+      `;
+      let program;
+      let frame = 0;
+      function fallback(error) {
+        cancelAnimationFrame(frame);
+        canvas.style.display = 'none';
+        if (error) console.warn('Mesh gradient: using CSS fallback.', error);
+      }
+      try {
+        program = gl.createProgram();
+        for (const [type, source] of [[gl.VERTEX_SHADER, vertex], [gl.FRAGMENT_SHADER, fragment]]) {
+          const shader = gl.createShader(type);
+          gl.shaderSource(shader, source);
+          gl.compileShader(shader);
+          if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+          gl.attachShader(program, shader);
+          gl.deleteShader(shader);
+        }
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+        gl.useProgram(program);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        const position = gl.getAttribLocation(program, 'a_position');
+        gl.enableVertexAttribArray(position);
+        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+        palette.forEach((hex, i) => {
+          const rgb = hex.slice(1).match(/../g).map(value => parseInt(value, 16) / 255);
+          gl.uniform3fv(gl.getUniformLocation(program, `c${i}`), rgb);
+        });
+      } catch (error) { fallback(error); return; }
+
+      const resolution = gl.getUniformLocation(program, 'u_resolution');
+      const time = gl.getUniformLocation(program, 'u_t');
+      const pointer = gl.getUniformLocation(program, 'u_pointer');
+      // ?static draws one still frame, the same as reduced motion.
+      const motion = new URLSearchParams(location.search).has('static') ? { matches: true, addEventListener() {} } : matchMedia('(prefers-reduced-motion: reduce)');
+      const target = [0, 0], eased = [0, 0];
+      let phase = 0, previous = null;
+      function resize() {
+        const dpr = Math.min(devicePixelRatio || 1, 1.5);
+        canvas.width = Math.max(1, Math.round(innerWidth * dpr));
+        canvas.height = Math.max(1, Math.round(innerHeight * dpr));
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform2f(resolution, canvas.width, canvas.height);
+        if (motion.matches) draw(performance.now());
+      }
+      function draw(now) {
+        const dt = previous === null ? 0 : (now - previous) / 1000;
+        previous = now;
+        if (!motion.matches) phase = (phase + dt * Math.PI * 2 / 24) % (Math.PI * 2);
+        const ease = 1 - Math.exp(-dt * 5);
+        for (let i = 0; i < 2; i++) eased[i] = motion.matches ? 0 : eased[i] + (target[i] - eased[i]) * ease;
+        gl.uniform1f(time, motion.matches ? 0 : phase);
+        gl.uniform2f(pointer, eased[0], eased[1]);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (!motion.matches && !document.hidden) frame = requestAnimationFrame(draw);
+      }
+      function restart() {
+        cancelAnimationFrame(frame);
+        previous = null;
+        if (!document.hidden && !gl.isContextLost()) draw(performance.now());
+      }
+      addEventListener('pointermove', event => {
+        target[0] = event.clientX / innerWidth * 2 - 1;
+        target[1] = 1 - event.clientY / innerHeight * 2;
+      }, { passive: true });
+      document.documentElement.addEventListener('pointerleave', () => target.fill(0));
+      addEventListener('resize', resize);
+      document.addEventListener('visibilitychange', restart);
+      motion.addEventListener('change', restart);
+      canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); fallback(); });
+      canvas.addEventListener('webglcontextrestored', () => location.reload());
+      resize();
+      restart();
+    })();
+  </script>
+</body>
+</html>
