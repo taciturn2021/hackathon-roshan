@@ -94,6 +94,9 @@ func main() {
 		svc := newServices(db, rdb, nil, mediaDir, q)
 		mux := asynq.NewServeMux()
 		registerTasks(mux, svc)
+		if svc.ai == nil {
+			select {} // no handlers: a running server would fail every task and archive it; leave them queued
+		}
 		srv := asynq.NewServer(asynqOpt, asynq.Config{Concurrency: 5})
 		log.Fatal(srv.Run(mux))
 	default:

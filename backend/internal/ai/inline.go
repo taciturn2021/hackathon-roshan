@@ -82,17 +82,22 @@ func (s *Service) Extract(ctx context.Context, audioPath, field string) (workers
 		return out, nil
 	}
 
-	// The trade decision does not depend on the JSON extraction, so run it alongside.
+	// Jev decides the trade. On the trade question it runs alongside the extraction; on the other
+	// questions it runs only when the LLM heard a trade, so a name, area or years answer costs no
+	// decision call.
 	type tradeRes struct {
 		trade *string
 		p     float64
 		err   error
 	}
-	tradeCh := make(chan tradeRes, 1)
-	go func() {
+	pick := func() tradeRes {
 		t, p, err := s.pickTrade(ctx, transcript)
-		tradeCh <- tradeRes{t, p, err}
-	}()
+		return tradeRes{t, p, err}
+	}
+	tradeCh := make(chan tradeRes, 1)
+	if field == "trade" {
+		go func() { tradeCh <- pick() }()
+	}
 
 	user := fmt.Sprintf("Question: %s\nAnswer: %s", field, transcript)
 	raw, err := s.llm(ctx, extractPrompt, user, func(t string) bool {
@@ -104,7 +109,13 @@ func (s *Service) Extract(ctx context.Context, audioPath, field string) (workers
 	}
 	out.Profile = workers.OnboardProfile{Name: ex.Name, Area: ex.Area, Skills: ex.Skills, YearsExp: ex.YearsExp}
 
-	tr := <-tradeCh
+	var tr tradeRes
+	switch {
+	case field == "trade":
+		tr = <-tradeCh
+	case ex.Trade != nil:
+		tr = pick()
+	}
 	switch {
 	case tr.err == nil && tr.trade != nil && tr.p >= minConfidence:
 		out.Profile.Trade, out.Confidence = tr.trade, tr.p
@@ -119,6 +130,9 @@ func (s *Service) Extract(ctx context.Context, audioPath, field string) (workers
 		} else {
 			out.Confidence = 0
 		}
+	}
+	if err != nil && field != "trade" {
+		return out, fmt.Errorf("extract: %w", err)
 	}
 	if err != nil && tr.err != nil {
 		return out, fmt.Errorf("extract: %w; trade: %w", err, tr.err)

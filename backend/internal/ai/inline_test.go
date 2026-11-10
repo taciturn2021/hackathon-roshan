@@ -58,7 +58,7 @@ func TestExtractUnsureTradeKeepsGuessWithLowConfidence(t *testing.T) {
 }
 
 func TestExtractOtherFieldConfidence(t *testing.T) {
-	s, _ := newTest(t, inlineGateway("دس سال", `{"years_exp":10}`, nil))
+	s, f := newTest(t, inlineGateway("دس سال", `{"years_exp":10}`, nil))
 	ex, _ := s.Extract(context.Background(), audioFile(t, ".wav"), "years_exp")
 	if ex.Profile.YearsExp == nil || *ex.Profile.YearsExp != 10 || ex.Confidence != 0.9 || ex.Profile.Trade != nil {
 		t.Fatalf("got %+v", ex)
@@ -66,6 +66,21 @@ func TestExtractOtherFieldConfidence(t *testing.T) {
 	ex, _ = s.Extract(context.Background(), audioFile(t, ".wav"), "name") // name not in the JSON
 	if ex.Confidence != 0 {
 		t.Fatalf("missing name should have confidence 0, got %v", ex.Confidence)
+	}
+	for _, c := range f.calls {
+		if c["_path"] == "/v1/decisions" {
+			t.Fatal("Jev was called for an answer that names no trade")
+		}
+	}
+}
+
+// A trade heard on another question ("Main Akram hoon, plumber") is still decided by Jev.
+func TestExtractOtherFieldAsksJevOnlyWhenATradeIsHeard(t *testing.T) {
+	s, _ := newTest(t, inlineGateway("میں اکرم ہوں، پلمبر", `{"name":"Akram","trade":"plumber"}`,
+		map[string]float64{"plumber": 0.9}))
+	ex, err := s.Extract(context.Background(), audioFile(t, ".wav"), "name")
+	if err != nil || ex.Profile.Trade == nil || *ex.Profile.Trade != "plumber" || ex.Confidence != 0.9 {
+		t.Fatalf("got %+v %v", ex, err)
 	}
 }
 

@@ -67,8 +67,10 @@ Redis token buckets: the full number is available as a burst, then it refills ev
 
 ## 6. AI behaviour the UI must handle
 
-**Inline (the user waits; show a spinner):** `POST /workers/onboard` and `POST /problems`. Expect about 2–6 s.
+**Inline:** `POST /workers/onboard` and `POST /problems`. Expect about 2–6 s.
 
+- **Onboarding: no spinner** (`docs/4-UI_UX_BRIEF.md`). When the worker releases the mic, show the tick and play the next question at once; send the answer in the background and merge the result when it returns. Wait for outstanding answers only before the profile confirm screen, and handle unclear ones there (ask once more, or the trade picker).
+- **Describe problem: the customer waits**, because the result card is the next thing on screen. Show progress on the send button and keep the five trade icons tappable underneath, so the customer can pick a trade and move on without waiting.
 - Onboarding returns `OnboardAnswer` for one spoken answer.
   - `transcript === ""` means nothing was heard: ask again.
   - For the `trade` question, `confidence < 0.6` means show the trade icon picker, with `profile.trade` preselected if it is set.
