@@ -17,6 +17,16 @@ docker compose up --build
 
 After changing `backend/db/schema.sql`, reset the database with `docker compose down -v`.
 
+The API exits at startup unless `.env` has `FIREBASE_PROJECT_ID` (the team's Firebase project). For local testing without Firebase, set `AUTH_DEV=1` instead and send `Authorization: Bearer dev:<any-name>`; never set that on a deployed server.
+
+## Tests
+
+```bash
+backend/scripts/test-local.sh
+```
+
+Runs `go vet` and the full Go suite with the race detector against throwaway Postgres and Redis containers. It needs only Docker. It includes the double-booking race test (two simultaneous accepts for one worker, exactly one confirms) and an end-to-end test of the whole flow.
+
 ## Stack
 
 React + Vite + TypeScript + Tailwind · Firebase Auth (Google and email/password) · Go (stdlib `net/http`, `pgx`, `asynq`) · Postgres 16 · Redis 7 · Docker Compose.
