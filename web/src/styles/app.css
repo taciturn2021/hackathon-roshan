@@ -308,3 +308,9 @@ html[lang=ur] .lp h1,html[lang=ur] .lp h2,html[lang=ur] .lp h3,html[lang=ur] .lp
 .app-back{flex-shrink:0}
 /* Sign-in and sign-up are focused screens: brand and language only. */
 .site-header.focused .header-inner{justify-content:space-between}
+
+/* Landing hero picture (transparent cut-out) with the example request tucked under it */
+.lp-visual{display:grid;justify-items:center}
+.lp-art{width:min(100%,400px);height:auto;filter:drop-shadow(0 16px 24px rgb(0 0 0 / .35))}
+.lp-visual .lp-demo{position:relative;width:100%;margin-top:-28px}
+@media(min-width:960px){.lp-art{width:100%}.lp-visual .lp-demo{margin-top:-44px}}

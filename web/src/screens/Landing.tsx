@@ -67,7 +67,10 @@ export function Landing() {
             </div>
           </div>
 
-          {/* The product itself, not a stock picture: one request from first message to agreed price. */}
+          <div className="lp-visual">
+          <img className="lp-art" src="/craft-hero.png" width={1100} height={733}
+            alt={t('Worn hand tools, a copper pipe and pressure gauges on a stone', 'پتھر پر رکھے پرانے اوزار، تانبے کا پائپ اور گیج')} />
+          {/* The product itself: one request from first message to agreed price. */}
           <figure className="lp-demo" aria-label={t('Example of one request', 'ایک درخواست کی مثال')}>
             <figcaption>{t('Example request', 'مثال')}</figcaption>
             <p className="lp-bubble" dir="auto">Kitchen ka nalka leak ho raha hai, abhi koi aa jaye</p>
@@ -89,6 +92,7 @@ export function Landing() {
               <span className="lp-accept"><Icon name="Check" />{t('Accept', 'منظور')}</span>
             </div>
           </figure>
+          </div>
         </div>
       </section>
 
