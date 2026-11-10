@@ -206,27 +206,34 @@ func buildAPI(svc *services, origins []string) *api {
 	limit := func(name string, n int, per time.Duration, key func(*http.Request) string) func(http.Handler) http.Handler {
 		return platform.RateLimit(rdb, name, platform.Limit{N: n, Per: per}, key)
 	}
-	// Per IP on everything. Generous, because a whole venue can share one IP; it only stops floods.
-	perIP := limit("ip", 600, time.Minute, platform.ClientIP)
+	// Plain API calls get generous limits that only stop floods and scripts; the tight limits are on
+	// the routes that spend AI gateway money.
+	// Per IP on everything. A whole venue can share one IP.
+	perIP := limit("ip", 1200, time.Minute, platform.ClientIP)
 	// Signing in verifies a token and may create a user: per IP.
-	sessions := limit("session", 30, time.Minute, func(r *http.Request) string {
+	sessions := limit("session", 120, time.Minute, func(r *http.Request) string {
 		if r.URL.Path == "/api/auth/session" {
 			return platform.ClientIP(r)
 		}
 		return ""
 	})
-	// Per user, after auth. Every write can queue paid AI work (a voice note → STT + Jev + LLM,
-	// a customer text → LLM + TTS, a new job → LLM + TTS, a review → Jev + LLM).
-	writes := limit("writes", 30, time.Minute, platform.WritesOnly(platform.UserKey))
-	newJobs := limit("jobs", 10, 10*time.Minute, func(r *http.Request) string {
-		if r.Method == http.MethodPost && r.URL.Path == "/api/jobs" {
-			return platform.UserKey(r)
+	// Per user, after auth (r.Pattern is the matched route).
+	writes := limit("writes", 300, time.Minute, platform.WritesOnly(platform.UserKey))
+	route := func(pattern string) func(*http.Request) string {
+		return func(r *http.Request) string {
+			if r.Pattern == pattern {
+				return platform.UserKey(r)
+			}
+			return ""
 		}
-		return ""
-	})
+	}
+	// AI-backed writes: a chat message queues STT + Jev + LLM (voice) or LLM + TTS (customer text);
+	// a new job queues LLM + TTS for the brief.
+	chat := limit("chat", 30, time.Minute, route("POST /api/jobs/{id}/messages"))
+	newJobs := limit("jobs", 10, 10*time.Minute, route("POST /api/jobs"))
 	// Inline AI endpoints (onboarding answer, problem classification).
 	aiLimit := limit("ai", 20, time.Minute, platform.UserKey)
-	auth := func(h http.Handler) http.Handler { return svc.ids.Middleware(writes(newJobs(h))) }
+	auth := func(h http.Handler) http.Handler { return svc.ids.Middleware(writes(chat(newJobs(h)))) }
 
 	svc.ids.Routes(mux, func(ctx context.Context, userID int64) (any, error) { return svc.wks.Card(ctx, userID, nil) })
 	svc.wks.Routes(mux, auth, aiLimit)
