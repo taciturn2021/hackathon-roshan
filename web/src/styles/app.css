@@ -162,6 +162,11 @@
 @media(min-width:900px){.card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .profile-strip{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 20px}
 .profile-strip h2{font:600 22px/1.3 var(--font-sans)}
+/* The name column needs real width before it shares a line: with .grow's 0 basis, phones 380-500px wide kept
+   the audio player on the same line and squeezed the name to one letter per line. Now the player wraps below. */
+.profile-strip>.grow{flex:1 1 180px}
+/* .worker [lang=en] sets English snippets to 16px; the name is a heading and keeps its size, with room above the Urdu line. */
+.worker .profile-strip h2[lang=en]{font-size:22px;line-height:1.3;margin-bottom:4px}
 .worker .panel h2{font-family:var(--font-sans)}
 
 /* Landing structure */
