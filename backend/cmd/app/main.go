@@ -230,7 +230,7 @@ func buildAPI(svc *services, origins []string) *api {
 	// AI-backed writes: a chat message queues STT + Jev + LLM (voice) or LLM + TTS (customer text);
 	// a new job queues LLM + TTS for the brief.
 	chat := limit("chat", 30, time.Minute, route("POST /api/jobs/{id}/messages"))
-	newJobs := limit("jobs", 10, 10*time.Minute, route("POST /api/jobs"))
+	newJobs := limit("jobs", 50, 10*time.Minute, route("POST /api/jobs"))
 	// Inline AI endpoints (onboarding answer, problem classification).
 	aiLimit := limit("ai", 20, time.Minute, platform.UserKey)
 	auth := func(h http.Handler) http.Handler { return svc.ids.Middleware(writes(chat(newJobs(h)))) }
