@@ -107,7 +107,11 @@ func main() {
 // results back with svc.jbs.SetTranscript, svc.jbs.SetMessageSpeech, svc.jbs.SetBrief, svc.rvs.SetTags,
 // svc.wks.SetTrustSummary (each persists and pushes the WebSocket update).
 func registerTasks(mux *asynq.ServeMux, svc *services) {
-	tasks.Register(mux, tasks.Deps{Jobs: svc.jbs, Reviews: svc.rvs, Workers: svc.wks, Media: svc.media, AI: ai.FromEnv(svc.rdb)})
+	if svc.ai == nil {
+		log.Print("WARNING: AI_GATEWAY_API_KEY is not set; AI tasks stay queued until a worker with a key runs")
+		return
+	}
+	tasks.Register(mux, tasks.Deps{Jobs: svc.jbs, Reviews: svc.rvs, Workers: svc.wks, Media: svc.media, AI: svc.ai})
 }
 
 // services are the module services, shared by the api and worker modes.
@@ -121,6 +125,7 @@ type services struct {
 	jbs   *jobs.Service
 	rvs   *reviews.Service
 	prb   *problems.Service
+	ai    *ai.Service // nil without AI_GATEWAY_API_KEY: inline AI is off and the UI shows pickers
 }
 
 // newServices wires the modules together. verifier may be nil in worker mode (no HTTP auth there).
@@ -129,6 +134,9 @@ type services struct {
 // write they follow has already succeeded. Extract (onboarding AI) is wired when internal/ai lands.
 func newServices(db *pgxpool.Pool, rdb *redis.Client, verifier identity.Verifier, mediaDir string, q *queue.Client) *services {
 	s := &services{db: db, rdb: rdb, q: q, media: platform.Media{Dir: mediaDir}}
+	if os.Getenv("AI_GATEWAY_API_KEY") != "" {
+		s.ai = ai.FromEnv(rdb)
+	}
 	enqueue := func(what string, fn func(context.Context, int64) error) func(context.Context, int64) {
 		return func(ctx context.Context, id int64) {
 			if err := fn(context.WithoutCancel(ctx), id); err != nil {
@@ -160,6 +168,7 @@ func newServices(db *pgxpool.Pool, rdb *redis.Client, verifier identity.Verifier
 		PriceRange: func(ctx context.Context, trade string) (*workers.PriceRange, error) {
 			return s.jbs.PriceRange(ctx, trade)
 		},
+		Extract: s.extract(),
 	})
 	s.jbs = jobs.NewService(jobs.Deps{
 		DB: db, Media: s.media, Redis: rdb, Users: s.ids, Workers: s.wks,
@@ -173,8 +182,11 @@ func newServices(db *pgxpool.Pool, rdb *redis.Client, verifier identity.Verifier
 		DB: db, Media: s.media, Redis: rdb, Jobs: s.jbs,
 		OnReviewCreated: enqueue("review analyze", q.ReviewAnalyze),
 	})
-	// Classify (problem → trade/urgency) is wired when internal/ai lands; until then the UI shows the trade picker.
-	s.prb = problems.NewService(problems.Deps{Media: s.media, PriceRange: s.jbs.PriceRange})
+	pd := problems.Deps{Media: s.media, PriceRange: s.jbs.PriceRange}
+	if s.ai != nil {
+		pd.Classify = s.ai.Classify
+	}
+	s.prb = problems.NewService(pd)
 	return s
 }
 
@@ -246,4 +258,12 @@ func newMux(pingDB, pingRedis func(context.Context) error, mediaDir string) *htt
 	// ponytail: media on a local volume; S3-compatible storage when the API runs on more than one host.
 	mux.Handle("GET /media/", http.StripPrefix("/media/", http.FileServer(http.Dir(mediaDir))))
 	return mux
+}
+
+// extract is the onboarding AI, or nil (no AI: the UI asks again or shows the picker).
+func (s *services) extract() func(ctx context.Context, audioPath, field string) (workers.Extracted, error) {
+	if s.ai == nil {
+		return nil
+	}
+	return s.ai.Extract
 }
