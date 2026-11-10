@@ -33,7 +33,7 @@ export function WorkerProfile({ id }: { id: number }) {
     if (draft.lat === null || draft.lng === null) return
     setState('sending')
     try {
-      const job = await api.createJob({ worker_id: w.id, trade: w.trade, description: draft.description, urgency: draft.urgency, lat: draft.lat, lng: draft.lng })
+      const job = await api.createJob({ worker_id: w.id, trade: w.trade, description: draft.description || `${t.en} needed`, urgency: draft.urgency, lat: draft.lat, lng: draft.lng })
       navigate(`/app/jobs/${job.id}`)
     } catch (e) {
       setState(isWorkerBusy(e) ? 'busy' : 'error')

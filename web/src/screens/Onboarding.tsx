@@ -47,6 +47,7 @@ export function Onboard() {
     api.onboard(clip, asked)
       .then((a) => {
         const defined = Object.fromEntries(Object.entries(a.profile).filter(([, v]) => v !== undefined && v !== ''))
+        if (asked === 'trade' && a.confidence < 0.6) delete defined.trade // unsure: ask again, then the picker
         latest.current = { ...latest.current, ...defined }
         if (asked === 'trade' && a.audio_url) intro.current = a.audio_url
         setProfile(latest.current)
@@ -184,7 +185,7 @@ export function WorkerConfirm() {
     setState('saving')
     try {
       const worker = await api.saveWorker({
-        name: p.name ?? me!.user.name ?? '', trade, skills: p.skills ?? [], years_exp: p.years_exp ?? null,
+        name: p.name || me!.user.name || 'Kaarigar', trade, skills: p.skills ?? [], years_exp: p.years_exp ?? null,
         area: p.area ?? null, lat: draft.lat, lng: draft.lng, intro_audio_url: draft.intro_audio_url,
       })
       setMe({ ...me!, worker })
