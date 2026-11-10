@@ -65,6 +65,9 @@ services:
     image: node:24-alpine
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    env_file:
+      - path: .env
+        required: false
     environment:
       API_TARGET: http://api:8080
     volumes:

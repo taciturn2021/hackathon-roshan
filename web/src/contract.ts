@@ -4,7 +4,7 @@ export type Trade = 'electrician' | 'plumber' | 'ac_technician' | 'carpenter' | 
 export type Urgency = 'now' | 'today' | 'flexible';
 export type JobStatus = 'requested' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 
-export type User = { id: number; phone: string; role: 'worker' | 'customer'; name: string | null };
+export type User = { id: number; email: string | null; role: 'worker' | 'customer'; name: string | null; photo_url: string | null };
 
 export type ProfileDraft = {                 // AI output, not saved yet
   name: string | null; trade: Trade | null; trade_confidence: number;

@@ -7,6 +7,7 @@ const api = process.env.API_TARGET ?? 'http://localhost:8080'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  envDir: '..', // VITE_* values live in the repo-root .env
   server: {
     proxy: {
       '/api': { target: api, ws: true },

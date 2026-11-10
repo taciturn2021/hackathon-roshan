@@ -13,7 +13,7 @@ web/                                                 → Abdul Muizz
 
 | Time | Abdullah | Abdul Muizz | Nouman | Humza |
 |---|---|---|---|---|
-| now → 12:00 | Schema, sqlc, `platform`, `identity` | **Figma: 10 frames** | STT test A vs B (5 Urdu clips), confirm gateway access, then help on Figma | Public repo, compose skeleton, CI, branch protection |
+| now → 12:00 | Firebase project setup, schema, sqlc, `platform`, `identity` (verify Firebase token) | **Figma: 10 frames** | STT test A vs B (5 Urdu clips), confirm gateway access, then help on Figma | Public repo, compose skeleton, CI, branch protection |
 | 12:00 → 13:15 | `workers` (onboard, search, profile) | Screens 1–5 against mocked API | `ai` package, onboarding extraction, seed ~40 workers + jobs + reviews | First green `docker compose up`; double-booking race test |
 | 13:15 → 14:30 | `jobs`, messages, offers, WebSocket hub, `reviews` | Screens 6–10, wire real API + WebSocket | Queue handlers, Jev decisions, record Urdu prompts, then job read-aloud | Merge continuously; end-to-end happy-path test |
 | 14:30 → 15:00 | Bug fixes only | Bug fixes only | README | Clean-clone run; HTTPS tunnel for phone demo |
@@ -24,7 +24,7 @@ web/                                                 → Abdul Muizz
 - CI is manual only (`gh workflow run CI --ref <branch>`); Humza runs it before merging when needed. It checks: `go vet`, `go test ./...`, `tsc --noEmit`, `eslint`.
 - Two tests are mandatory: the race test (two concurrent accepts → exactly one succeeds, the other gets 409) and one browser test of the full flow.
 
-**README must list** (rules require it): setup, stack, every AI service and model, AI coding assistants used, what is seeded (workers, jobs, reviews), what is mocked (OTP), known limitations.
+**README must list** (rules require it): setup, stack, every AI service and model, AI coding assistants used, what is seeded (workers, jobs, reviews), what is mocked, Firebase Auth as a third-party service, known limitations.
 
 **Phone demo:** the browser microphone needs HTTPS. Use a tunnel (e.g. `cloudflared`) or demo in a laptop browser at phone width.
 

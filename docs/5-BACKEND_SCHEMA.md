@@ -5,9 +5,11 @@ Part of the six planning documents in `docs/`. Give all six to your AI coding as
 ```sql
 CREATE TABLE users (
   id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  phone      TEXT NOT NULL UNIQUE,
+  firebase_uid TEXT NOT NULL UNIQUE,   -- Firebase Auth user id; seeded users use 'seed-<n>'
+  email      TEXT,
   role       TEXT NOT NULL CHECK (role IN ('worker','customer')),
-  name       TEXT,
+  name       TEXT,                    -- prefilled from the Google account
+  photo_url  TEXT,                    -- prefilled from the Google account
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

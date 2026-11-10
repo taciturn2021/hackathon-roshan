@@ -7,7 +7,7 @@ Worker screens auto-play a recorded Urdu prompt and have a replay button. One pr
 | # | Screen | Role | Primary action | Notes / states |
 |---|---|---|---|---|
 | 1 | Role pick | both | Tap picture: worker (tools) or customer (house) | No text needed |
-| 2 | Phone + code | both | Number pad, then code `1234` | Digits only; error = shake + audio |
+| 2 | Sign in | both | Worker: one big "Continue with Google" button. Customer: Google button, or email + password | Firebase Auth. Worker never types; error = shake + audio |
 | 3 | Voice onboarding | worker | Hold mic, speak name / work / area / years | Asks for location permission; states: idle, recording, thinking, follow-up question (max 2) |
 | 4 | Profile confirm | worker | ✓ confirm or 🎤 redo | Shows trade icon, name, area, years; low confidence → 5 trade icons to tap |
 | 5 | Worker home | worker | Big online/offline toggle | Incoming job card rings; busy state when on a job |

@@ -37,7 +37,7 @@ Part of the six planning documents in `docs/`. Give all six to your AI coding as
 | Mic button | 96px circle, `go` idle → `stop` while held, pulsing ring while recording, spinner while thinking |
 | Audio prompt bar | Top of every worker screen: speaker icon + replay button; auto-plays once on entry |
 | Big choice tile | Half-width picture tile, 140px tall, icon + one word; used for role and trade pickers |
-| Number pad | 3×4 grid, 64px keys; used for phone, code and price |
+| Number pad | 3×4 grid, 64px keys; used for price offers |
 | Worker card | Photo 56px, name, trade icon, distance, ★ rating, jobs done; whole card is the tap target |
 | Trust card | AI summary sentence, tag chips, review list with play buttons |
 | Offer card | Price in 32px digits, "Rs", ✓ (`go`) and ✗ (`stop`) buttons 56px tall; greyed once answered |
@@ -48,7 +48,7 @@ Part of the six planning documents in `docs/`. Give all six to your AI coding as
 ## Layout per screen
 
 1. **Role pick:** two big choice tiles stacked, worker on top. Nothing else.
-2. **Phone + code:** large digit display on top, number pad below, `go` arrow button. Same frame reused for the code.
+2. **Sign in:** worker frame = audio prompt bar and one full-width "Continue with Google" button (Google logo, 72px tall), nothing else. Customer frame = the same Google button, an "or" divider, then email and password fields with a sign in / create account toggle.
 3. **Voice onboarding:** audio prompt bar; four small hint icons in a row (person, tools, map pin, calendar) that tick green as each field is heard; mic button centred low.
 4. **Profile confirm:** card with photo placeholder, trade icon, name, area, years as icon + value rows; bottom row ✓ (`go`, wide) and mic (redo, narrow).
 5. **Worker home:** online toggle on top; below it either an empty "waiting" illustration or the incoming job card (trade icon, distance, play-brief button, open button).
@@ -65,8 +65,7 @@ Have a native speaker check the wording before recording.
 | File | Urdu | Roman Urdu |
 |---|---|---|
 | `role.mp3` | آپ کاریگر ہیں یا گاہک؟ تصویر دبائیں۔ | Aap kaarigar hain ya gaahak? Tasveer dabayen. |
-| `phone.mp3` | اپنا موبائل نمبر لکھیں۔ | Apna mobile number likhein. |
-| `code.mp3` | کوڈ لکھیں۔ | Code likhein. |
+| `signin.mp3` | آگے بڑھنے کے لیے گوگل والا بٹن دبائیں۔ | Aagay barhne ke liye Google wala button dabayen. |
 | `onboard.mp3` | بٹن دبا کر رکھیں اور بتائیں: آپ کا نام، آپ کا کام، آپ کا علاقہ، اور کتنے سال کا تجربہ ہے۔ | Button daba kar rakhein aur batayen: aap ka naam, kaam, ilaqa, aur kitne saal ka tajurba hai. |
 | `ask-name.mp3` | آپ کا نام کیا ہے؟ | Aap ka naam kya hai? |
 | `ask-trade.mp3` | آپ کیا کام کرتے ہیں؟ | Aap kya kaam karte hain? |

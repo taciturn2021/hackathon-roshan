@@ -19,7 +19,7 @@ After changing `backend/db/schema.sql`, reset the database with `docker compose 
 
 ## Stack
 
-React + Vite + TypeScript + Tailwind · Go (stdlib `net/http`, `pgx`, `asynq`) · Postgres 16 · Redis 7 · Docker Compose.
+React + Vite + TypeScript + Tailwind · Firebase Auth (Google and email/password) · Go (stdlib `net/http`, `pgx`, `asynq`) · Postgres 16 · Redis 7 · Docker Compose.
 Planning documents are in [`docs/`](docs/).
 
 ## AI services and tools
@@ -30,7 +30,7 @@ AI coding assistants used: _to be completed._
 
 ## Seeded and mocked
 
-_To be completed._ Planned: seeded workers, jobs and reviews; OTP is mocked (code `1234`).
+_To be completed._ Planned: seeded workers, jobs and reviews.
 
 ## Known limitations
 

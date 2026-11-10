@@ -25,7 +25,7 @@ Part of the six planning documents in `docs/`. Give all six to your AI coding as
 4. Photo of the problem → trade *(stretch)*
 5. Map of nearby workers, Leaflet *(stretch)*
 
-**Not building:** payments, real OTP/SMS, CNIC verification, scheduling for later, worker live GPS tracking, admin panel, native app.
+**Not building:** payments, phone/SMS login, CNIC verification, scheduling for later, worker live GPS tracking, admin panel, native app.
 
 **Never cut:** voice onboarding, the booking constraint, the review step.
 

@@ -10,6 +10,7 @@ Part of the six planning documents in `docs/`. Give all six to your AI coding as
 | Queue | `asynq` on Redis (dashboard: `asynqmon`) |
 | Realtime | WebSocket (`coder/websocket`), fan-out through Redis pub/sub |
 | Media | Audio/photo files on a Docker volume, served at `/media/*` |
+| Auth | Firebase Auth: Google sign-in and email + password. The API verifies the Firebase ID token |
 | AI | Vercel AI Gateway, key in `AI_GATEWAY_API_KEY` |
 | Run | `docker compose up` → `web`, `api`, `worker`, `postgres`, `redis`, `asynqmon` |
 
@@ -50,23 +51,28 @@ All AI is plain HTTP from Go in `internal/ai`. No Python service: we call hosted
 - `asynq` is the Go equivalent of Celery: Redis-backed, retries, dashboard. Celery itself is Python-only.
 - No Kafka. Nothing here needs replay or multi-consumer event logs; Redis pub/sub + refetch-on-reconnect covers delivery. Upgrade path: publish job events to a Kafka-compatible log (Redpanda) when a second consumer such as analytics appears.
 
+**Auth (Firebase)**
+- **Web:** Firebase JS SDK. `signInWithPopup(GoogleAuthProvider)` for Google; `signInWithEmailAndPassword` / `createUserWithEmailAndPassword` for password. Call `getIdToken()` before every request (the SDK refreshes it; tokens last one hour).
+- **API:** `identity` verifies the ID token with the Firebase Admin Go SDK (`firebase.google.com/go/v4`, `VerifyIDToken`) using `FIREBASE_PROJECT_ID`, then maps `uid` → `users.firebase_uid`. Name and picture come from the token on first sign-in.
+- **Workers use Google only:** one tap, no typing, so outcome 1 still holds. Email + password is offered on the customer side only.
+- **Setup (once, in the Firebase console):** create the project, enable the Google and Email/Password providers, copy the web config into `.env`. For the phone demo, add the tunnel's domain under Authentication → Settings → Authorized domains, or Google sign-in will be refused.
+
 **Module rule (modular monolith)**
 - `internal/{identity,workers,jobs,reviews,ai}`; each exposes one `Service`. Modules talk only through `Service` methods.
 - Each module owns its tables. One documented exception: the view `available_workers` reads `jobs`.
 - `internal/platform` holds db, redis, WebSocket hub, auth middleware, media upload. `internal/tasks` holds asynq handlers.
 
 **Deliberate shortcuts (say these in Q&A; mark each in code with a `ponytail:` comment)**
-- Mock OTP: code is always `1234`. Real SMS provider when there are real users.
 - Media on a local volume. S3-compatible storage when the API runs on more than one host.
 - Haversine in SQL. PostGIS index when workers exceed ~100k.
 - Price range is per trade only. Per job-type when there is enough data.
-- JWT in `Authorization` header, no session table, no refresh. Add when sessions must be revocable.
+- Seeded workers have no Firebase account (`firebase_uid` = `seed-<n>`), so nobody can log in as them. The demo worker and customer are real Firebase accounts.
 
 ---
 
 ## API contract
 
-Base `/api`. JSON unless marked multipart. Auth: `Authorization: Bearer <jwt>` on everything except `/auth/*`.
+Base `/api`. JSON unless marked multipart. Auth: `Authorization: Bearer <Firebase ID token>` on every endpoint.
 Errors: `{ "error": "code", "message": "..." }` with 400 / 401 / 403 / 404 / 409.
 
 ```ts
@@ -74,7 +80,7 @@ type Trade = 'electrician' | 'plumber' | 'ac_technician' | 'carpenter' | 'mechan
 type Urgency = 'now' | 'today' | 'flexible';
 type JobStatus = 'requested' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 
-type User = { id: number; phone: string; role: 'worker' | 'customer'; name: string | null };
+type User = { id: number; email: string | null; role: 'worker' | 'customer'; name: string | null; photo_url: string | null };
 
 type ProfileDraft = {                 // AI output, not saved yet
   name: string | null; trade: Trade | null; trade_confidence: number;
@@ -108,8 +114,7 @@ type Message = { id: number; job_id: number; sender_id: number; kind: 'text' | '
 
 | Method | Path | Body | Returns |
 |---|---|---|---|
-| POST | `/auth/otp` | `{phone}` | 204 (mock; code is `1234`) |
-| POST | `/auth/verify` | `{phone, code, role}` | `{token, user: User}` |
+| POST | `/auth/session` | `{role}` | `{user: User, worker: WorkerCard \| null}` — call once after every Firebase sign-in. Creates the user on first call; `role` is ignored for an existing user |
 | GET | `/me` | — | `{user: User, worker: WorkerCard \| null}` |
 | POST | `/workers/onboard` | multipart `audio`, optional `draft` (the previous `ProfileDraft` as JSON) | `ProfileDraft` merged with the new clip (inline AI) |
 | PUT | `/workers/me` | `{name, trade, skills, years_exp, area, lat, lng, intro_audio_url}` | `WorkerCard` |
@@ -126,7 +131,7 @@ type Message = { id: number; job_id: number; sender_id: number; kind: 'text' | '
 | POST | `/jobs/{id}/status` | `{status: 'in_progress' \| 'completed' \| 'cancelled'}` | `Job` |
 | POST | `/jobs/{id}/review` | multipart: `rating`, optional `audio`, optional `body` | `Review` |
 
-**WebSocket** `GET /api/ws?token=<jwt>` — server to client only; all writes go through REST.
+**WebSocket** `GET /api/ws?token=<Firebase ID token>` — server to client only; all writes go through REST.
 After any reconnect the client refetches `GET /jobs/{id}`.
 
 ```ts

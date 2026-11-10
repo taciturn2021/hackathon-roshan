@@ -1,9 +1,11 @@
 -- Source of truth: docs/5-BACKEND_SCHEMA.md. Change both in the same PR.
 CREATE TABLE users (
   id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  phone      TEXT NOT NULL UNIQUE,
+  firebase_uid TEXT NOT NULL UNIQUE,   -- Firebase Auth user id; seeded users use 'seed-<n>'
+  email      TEXT,
   role       TEXT NOT NULL CHECK (role IN ('worker','customer')),
-  name       TEXT,
+  name       TEXT,                    -- prefilled from the Google account
+  photo_url  TEXT,                    -- prefilled from the Google account
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
