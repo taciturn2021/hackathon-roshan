@@ -74,7 +74,7 @@ export function Alert({ title, text, tone = 'info' }: { title: string; text?: st
 }
 
 export function Badge({ tone, children }: { tone?: 'success' | 'warning' | 'error'; children: ReactNode }) {
-  return <span className={`badge ${tone ?? ''}`}><span className="dot" />{children}</span>
+  return <span className={`badge ${tone ?? ''}`}>{children}</span>
 }
 
 export function TradeIcon({ trade, small }: { trade: Trade; small?: boolean }) {
