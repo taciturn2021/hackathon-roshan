@@ -3,6 +3,7 @@ import { AppShell } from './components/AppShell'
 import { Shell } from './components/Shell'
 import { Task } from './components/Task'
 import { StatePanel } from './components/ui'
+import { useLang } from './lib/i18n'
 import { Link, match, Redirect, useLocation } from './lib/router'
 import { safeNext, useMe } from './lib/session'
 import { CustomerSignIn, RolePick, WorkerSignIn } from './screens/Auth'
@@ -65,6 +66,9 @@ export default function App() {
   const worker = me?.user.role === 'worker'
   const title = hit ? (worker && hit.route.ur) || hit.route.title : 'Page not found'
   useEffect(() => { document.title = `${title} · Roshan Rozgar` }, [title])
+  // The whole page follows the chosen language: Urdu reads right to left.
+  const lang = useLang()
+  useEffect(() => { document.documentElement.lang = lang; document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr' }, [lang])
 
   if (MOVED[path]) return <Redirect to={MOVED[path] + (query.size ? `?${query}` : '')} />
   if (inApp && !me) return <Redirect to={`/login?next=${encodeURIComponent(path + (query.size ? `?${query}` : ''))}`} />

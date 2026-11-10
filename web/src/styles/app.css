@@ -206,3 +206,37 @@
 
 /* Phone sign-in needs Google's invisible reCAPTCHA; its floating badge covered the buttons. */
 .grecaptcha-badge { visibility: hidden; }
+
+/* Language switch */
+.lang-switch{min-height:44px;padding:0 14px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--foreground);font:600 14px/1 var(--font-sans);cursor:pointer;white-space:nowrap}
+.lang-switch[lang=ur]{font:600 16px/1.9 var(--font-urdu)}
+.lang-switch:hover{background:var(--accent)}
+.app-sidebar .lang-switch,.app-drawer .lang-switch{align-self:flex-start;margin:8px 16px}
+
+/* Status card: one colour and icon per state, so screens are told apart without reading */
+.hero-card{display:flex;align-items:center;gap:16px;padding:20px;border-radius:20px;border:2px solid transparent}
+.hero-card h1{margin:0;font-size:24px;line-height:1.3}
+.hero-card p{margin:4px 0 0;font-size:16px}
+.worker .hero-card h1{font-size:26px;line-height:1.9}
+.worker .hero-card p{font-size:18px;line-height:1.9}
+.hero-icon{display:grid;place-items:center;flex-shrink:0;width:64px;height:64px;border-radius:50%;background:var(--card)}
+.hero-icon svg{width:32px;height:32px}
+.hero-card.idle{background:#F1F5F4;border-color:#CBD5D1;color:#334155}
+.hero-card.wait{background:var(--warning-soft);border-color:var(--highlight);color:var(--warning-foreground)}
+.hero-card.go{background:var(--accent);border-color:var(--primary);color:var(--accent-foreground)}
+.hero-card.work{background:var(--info-soft);border-color:var(--link);color:var(--info-foreground)}
+.hero-card.done{background:var(--sidebar-deep);border-color:var(--sidebar-deep);color:var(--sidebar-text)}
+.hero-card.done .hero-icon{color:var(--sidebar-deep)}
+.hero-card.stop{background:var(--destructive-soft);border-color:var(--destructive);color:var(--destructive-text)}
+.hero-card.wait .hero-icon{animation:hero-pulse 1.6s ease-in-out infinite}
+@keyframes hero-pulse{50%{transform:scale(1.08)}}
+@media(prefers-reduced-motion:reduce){.hero-card.wait .hero-icon{animation:none}}
+
+/* Numbered flow steps */
+.flow-steps{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin:0;padding:0;list-style:none}
+.flow-steps li{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font-size:13px;color:var(--muted-foreground)}
+.worker .flow-steps li{font-size:15px;line-height:1.7}
+.flow-steps li>span{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:var(--card);font:600 14px/1 var(--font-sans)}
+.flow-steps li.done>span{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
+.flow-steps li.current{color:var(--foreground);font-weight:600}
+.flow-steps li.current>span{border-color:var(--highlight);background:var(--warning-soft);color:var(--warning-foreground)}

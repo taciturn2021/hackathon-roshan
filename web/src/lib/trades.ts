@@ -1,12 +1,12 @@
 import type { IconName } from '../components/Icon'
 import type { JobStatus, Trade, Urgency } from '../contract'
 
-export const TRADES: Record<Trade, { icon: IconName; en: string; ur: string; blurb: string }> = {
-  electrician: { icon: 'Zap', en: 'Electrician', ur: 'بجلی', blurb: 'Lights, switches & wiring' },
-  plumber: { icon: 'Droplets', en: 'Plumber', ur: 'پانی', blurb: 'Leaks, taps & pipes' },
-  ac_technician: { icon: 'Snowflake', en: 'AC technician', ur: 'اے سی', blurb: 'Cooling, cleaning & care' },
-  carpenter: { icon: 'Hammer', en: 'Carpenter', ur: 'بڑھئی', blurb: 'Doors, furniture & fittings' },
-  mechanic: { icon: 'Wrench', en: 'Mechanic', ur: 'مکینک', blurb: 'Everyday mechanical repairs' },
+export const TRADES: Record<Trade, { icon: IconName; en: string; ur: string; blurb: string; blurbUr: string }> = {
+  electrician: { icon: 'Zap', en: 'Electrician', ur: 'بجلی', blurb: 'Lights, switches & wiring', blurbUr: 'لائٹ، سوئچ اور وائرنگ' },
+  plumber: { icon: 'Droplets', en: 'Plumber', ur: 'پانی', blurb: 'Leaks, taps & pipes', blurbUr: 'لیکیج، نل اور پائپ' },
+  ac_technician: { icon: 'Snowflake', en: 'AC technician', ur: 'اے سی', blurb: 'Cooling, cleaning & care', blurbUr: 'ٹھنڈک، صفائی اور سروس' },
+  carpenter: { icon: 'Hammer', en: 'Carpenter', ur: 'بڑھئی', blurb: 'Doors, furniture & fittings', blurbUr: 'دروازے، فرنیچر اور فٹنگ' },
+  mechanic: { icon: 'Wrench', en: 'Mechanic', ur: 'مکینک', blurb: 'Everyday mechanical repairs', blurbUr: 'گاڑی اور بائیک کی مرمت' },
 }
 export const TRADE_KEYS = Object.keys(TRADES) as Trade[]
 
@@ -25,6 +25,7 @@ export const STATUS: Record<JobStatus, { en: string; ur: string; tone: 'warning'
 }
 
 export const TAGS: Record<string, string> = { on_time: 'On time', fair_price: 'Fair price', clean_work: 'Clean work', polite: 'Polite' }
+export const TAGS_UR: Record<string, string> = { on_time: 'وقت پر', fair_price: 'مناسب قیمت', clean_work: 'صاف کام', polite: 'خوش اخلاق' }
 
 export const rupees = (n: number) => 'Rs ' + n.toLocaleString('en-PK')
 export const initials = (name: string) => name.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase()

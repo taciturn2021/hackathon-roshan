@@ -62,3 +62,4 @@ Icons are Lucide (ISC). Fonts are Inter and Noto Nastaliq Urdu from Google Fonts
 - The web app polls every 4 to 5 seconds for new messages and job changes; it does not use the API's WebSocket yet.
 - Urdu speech quality was checked with generated speech, not with a wide range of real speakers and accents.
 - Media files are stored on the server's disk.
+- The site is in English and Urdu, but text written by the AI (problem summaries, trust summaries) is English only, and the spoken prompts are Urdu only.

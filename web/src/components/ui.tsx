@@ -1,26 +1,28 @@
 import { useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import type { Job, JobStatus, Trade } from '../contract'
 import { play, playPrompt, toast } from '../lib/audio'
+import { useT } from '../lib/i18n'
 import { km, TRADE_KEYS, TRADES, URGENCY } from '../lib/trades'
 import { Icon, type IconName } from './Icon'
 
 const WAVE = [9, 16, 12, 24, 18, 30, 14, 22, 28, 18, 10, 24, 32, 20, 13, 26, 18, 10, 15, 22, 12, 8]
 const NOT_READY = { en: 'Audio is not available yet.', ur: 'آواز ابھی دستیاب نہیں۔' }
 
-/** Play button with waveform. A null url means the audio is still being prepared. */
-export function AudioMessage({ url, ur = false }: { url: string | null; ur?: boolean }) {
+/** Play button with waveform. A null url means the audio is still being prepared. (`ur` is no longer used: text follows the chosen language.) */
+export function AudioMessage({ url }: { url: string | null; ur?: boolean }) {
+  const t = useT()
   const [duration, setDuration] = useState<string | null>(null)
   const start = () => {
     if (!url) return
     play(url).then((a) => {
       // Recorded webm clips report Infinity until fully read; show no duration rather than "Infinity:NaN".
       if (Number.isFinite(a.duration)) setDuration(`${Math.floor(a.duration / 60)}:${String(Math.round(a.duration % 60)).padStart(2, '0')}`)
-    }, () => toast(ur ? NOT_READY.ur : NOT_READY.en))
+    }, () => toast(t(NOT_READY.en, NOT_READY.ur)))
   }
   return (
     <div className="audio-message">
       <button className="icon-button" type="button" onClick={start} disabled={!url}
-        aria-label={url ? (ur ? 'آواز سنیں' : 'Play voice message') : ur ? 'آواز تیار ہو رہی ہے' : 'Audio is being prepared'}>
+        aria-label={url ? t('Play voice message', 'آواز سنیں') : t('Audio is being prepared', 'آواز تیار ہو رہی ہے')}>
         <Icon name={url ? 'Play' : 'LoaderCircle'} />
       </button>
       <span className="wave" aria-hidden="true">{WAVE.map((h, i) => <span key={i} style={{ height: h }} />)}</span>
@@ -31,12 +33,13 @@ export function AudioMessage({ url, ur = false }: { url: string | null; ur?: boo
 
 /** Worker screens: replayable spoken instruction at the top. */
 export function PromptBar({ prompt }: { prompt: string }) {
+  const t = useT()
   return (
-    <div className="promptbar" lang="ur">
-      <button className="icon-button" type="button" aria-label="ہدایات سنیں" onClick={() => playPrompt(prompt).catch(() => toast(NOT_READY.ur))}>
+    <div className="promptbar">
+      <button className="icon-button" type="button" aria-label={t('Listen to the instructions', 'ہدایات سنیں')} onClick={() => playPrompt(prompt).catch(() => toast(t(NOT_READY.en, NOT_READY.ur)))}>
         <Icon name="Volume2" />
       </button>
-      <span>سننے کے لیے دبائیں</span>
+      <span>{t('Tap to listen', 'سننے کے لیے دبائیں')}</span>
     </div>
   )
 }
@@ -79,13 +82,14 @@ export function TradeIcon({ trade, small }: { trade: Trade; small?: boolean }) {
 }
 
 /** The five trade pictures as a picker. */
-export function TradeGrid({ onPick, ur = false, selected }: { onPick: (t: Trade) => void; ur?: boolean; selected?: Trade | null }) {
+export function TradeGrid({ onPick, selected }: { onPick: (t: Trade) => void; ur?: boolean; selected?: Trade | null }) {
+  const t = useT()
   return (
     <div className="grid-2">
-      {TRADE_KEYS.map((t) => (
-        <button key={t} type="button" className={`trade-tile ${selected === t ? 'selected' : ''}`} aria-pressed={selected === t} onClick={() => onPick(t)}>
-          <TradeIcon trade={t} />
-          <span>{ur ? TRADES[t].ur : TRADES[t].en}</span>
+      {TRADE_KEYS.map((k) => (
+        <button key={k} type="button" className={`trade-tile ${selected === k ? 'selected' : ''}`} aria-pressed={selected === k} onClick={() => onPick(k)}>
+          <TradeIcon trade={k} />
+          <span>{t(TRADES[k].en, TRADES[k].ur)}</span>
         </button>
       ))}
     </div>
@@ -93,11 +97,12 @@ export function TradeGrid({ onPick, ur = false, selected }: { onPick: (t: Trade)
 }
 
 const STEPS: JobStatus[] = ['requested', 'confirmed', 'in_progress', 'completed']
-export function Timeline({ status, ur = false }: { status: JobStatus; ur?: boolean }) {
+export function Timeline({ status }: { status: JobStatus; ur?: boolean }) {
+  const t = useT()
   const at = STEPS.indexOf(status)
-  const labels = ur ? ['۱', '۲', '۳', '۴'] : ['Requested', 'Confirmed', 'Working', 'Done']
+  const labels = [t('Requested', 'درخواست'), t('Confirmed', 'پکا'), t('Working', 'جاری'), t('Done', 'مکمل')]
   return (
-    <div className="timeline" aria-label="Job progress">
+    <div className="timeline" aria-label={t('Job progress', 'کام کی پیش رفت')}>
       {labels.map((l, i) => (
         <div key={l} className={`step ${i <= at ? 'active' : ''}`} aria-current={i === at ? 'step' : undefined}>
           <div className="step-line" />{l}
@@ -109,17 +114,18 @@ export function Timeline({ status, ur = false }: { status: JobStatus; ur?: boole
 
 /** Job summary card. Customers read the description; workers get the Urdu brief with its audio. */
 export function JobCard({ job, worker = false }: { job: Job; worker?: boolean }) {
-  const t = TRADES[job.trade]
+  const t = useT()
+  const trade = TRADES[job.trade]
   const place = worker ? km(job.worker.distance_km) : [job.worker.area, km(job.worker.distance_km)].filter(Boolean).join(' · ')
   return (
     <section className="card">
       <div className="row">
         <TradeIcon trade={job.trade} small />
         <div className="grow">
-          <h2>{worker ? `${t.ur} کا کام` : t.en}</h2>
+          <h2>{t(trade.en, `${trade.ur} کا کام`)}</h2>
           {place && <p className="caption muted digits">{place}</p>}
         </div>
-        <Badge tone={job.urgency === 'flexible' ? undefined : 'warning'}>{worker ? URGENCY[job.urgency].ur : URGENCY[job.urgency].en}</Badge>
+        <Badge tone={job.urgency === 'flexible' ? undefined : 'warning'}>{t(URGENCY[job.urgency].en, URGENCY[job.urgency].ur)}</Badge>
       </div>
       {worker ? (
         <>
@@ -132,11 +138,12 @@ export function JobCard({ job, worker = false }: { job: Job; worker?: boolean })
 }
 
 export function Keypad({ onChange }: { onChange: Dispatch<SetStateAction<string>> }) {
+  const t = useT()
   const press = (k: string) => onChange((v) => (k === 'Delete' ? v.slice(0, -1) : (v + k).replace(/^0+/, '').slice(0, 7)))
   return (
     <div className="keypad">
       {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0'].map((k) => <button key={k} type="button" aria-label={k} onClick={() => press(k)}>{k}</button>)}
-      <button type="button" aria-label="Delete" onClick={() => press('Delete')}><Icon name="Delete" /></button>
+      <button type="button" aria-label={t('Delete', 'مٹائیں')} onClick={() => press('Delete')}><Icon name="Delete" /></button>
     </div>
   )
 }
