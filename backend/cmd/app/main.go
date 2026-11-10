@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/ai"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/identity"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/jobs"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform"
@@ -22,6 +23,7 @@ import (
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform/realtime"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/problems"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/reviews"
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/tasks"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/workers"
 )
 
@@ -105,7 +107,7 @@ func main() {
 // results back with svc.jbs.SetTranscript, svc.jbs.SetMessageSpeech, svc.jbs.SetBrief, svc.rvs.SetTags,
 // svc.wks.SetTrustSummary (each persists and pushes the WebSocket update).
 func registerTasks(mux *asynq.ServeMux, svc *services) {
-	_ = svc // replaced by e.g. tasks.Register(mux, tasks.Deps{...}) when internal/tasks lands
+	tasks.Register(mux, tasks.Deps{Jobs: svc.jbs, Reviews: svc.rvs, Workers: svc.wks, Media: svc.media, AI: ai.FromEnv(svc.rdb)})
 }
 
 // services are the module services, shared by the api and worker modes.
