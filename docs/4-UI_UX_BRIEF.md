@@ -66,15 +66,15 @@ Have a native speaker check the wording before recording.
 | File | Urdu | Roman Urdu |
 |---|---|---|
 | `role.mp3` | آپ کاریگر ہیں یا گاہک؟ تصویر دبائیں۔ | Aap kaarigar hain ya gaahak? Tasveer dabayen. |
-| `signin.mp3` | آگے بڑھنے کے لیے گوگل والا بٹن دبائیں۔ | Aagay barhne ke liye Google wala button dabayen. |
+| `signin.mp3` | اپنا فون نمبر لکھیں اور سبز بٹن دبائیں۔ یا گوگل والا بٹن دبائیں۔ | Apna phone number likhein aur sabz button dabayen. Ya Google wala button dabayen. |
 | `ask-name.mp3` | آپ کا نام کیا ہے؟ | Aap ka naam kya hai? |
 | `ask-trade.mp3` | آپ کیا کام کرتے ہیں؟ | Aap kya kaam karte hain? |
 | `ask-area.mp3` | آپ کس علاقے میں کام کرتے ہیں؟ | Aap kis ilaqay mein kaam karte hain? |
 | `ask-years.mp3` | آپ کو کتنے سال کا تجربہ ہے؟ | Aap ko kitne saal ka tajurba hai? |
 | `confirm.mp3` | کیا یہ معلومات ٹھیک ہیں؟ ٹھیک ہیں تو سبز بٹن دبائیں۔ دوبارہ بولنے کے لیے مائیک دبائیں۔ | Kya yeh maloomat theek hain? Theek hain to sabz button dabayen. Dobara bolne ke liye mic dabayen. |
 | `home.mp3` | کام لینے کے لیے بٹن آن کریں۔ | Kaam lene ke liye button on karein. |
-| `ring.mp3` | (short ringtone, no speech) | Plays when a new job arrives. |
-| `chat.mp3` | بات کرنے کے لیے مائیک دبا کر رکھیں۔ | Baat karne ke liye mic daba kar rakhein. |
+| `ring.wav` | (short ringtone, no speech) | Plays when a new job arrives. |
+| `chat.mp3` | بات کرنے کے لیے مائیک دبائیں، بولیں، پھر دوبارہ دبائیں۔ | Baat karne ke liye mic dabayen, bolein, phir dobara dabayen. |
 | `offer.mp3` | قیمت آئی ہے۔ منظور ہے تو سبز بٹن دبائیں۔ | Qeemat aayi hai. Manzoor hai to sabz button dabayen. |
 | `done.mp3` | کام مکمل ہو جائے تو یہ بٹن دبائیں۔ | Kaam mukammal ho jaye to yeh button dabayen. |
 | `error.mp3` | معاف کیجیے، دوبارہ کوشش کریں۔ | Maaf kijiye, dobara koshish karein. |

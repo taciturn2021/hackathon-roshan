@@ -3,7 +3,7 @@ import { Icon } from '../components/Icon'
 import { Task } from '../components/Task'
 import { Alert, Badge, Skeletons, StatePanel, TradeGrid, TradeIcon } from '../components/ui'
 import type { Problem as Analysis, Trade, Urgency } from '../contract'
-import { api, MOCK } from '../lib/api'
+import { api } from '../lib/api'
 import { MOCK_LOCATION } from '../lib/mocks'
 import { useRecorder } from '../lib/audio'
 import { locate, problemDraft } from '../lib/draft'
@@ -142,7 +142,7 @@ export function CustomerLocation() {
         <Icon name={state === 'loading' ? 'LoaderCircle' : state === 'error' ? 'RefreshCw' : 'LocateFixed'} />
         {state === 'error' ? 'Try again' : 'Use my location'}
       </button>
-      {MOCK && state === 'error' && <button className="button outline full" type="button" onClick={() => go(true)}>Use demo location (G-10, Islamabad)</button>}
+      <button className="button outline full" type="button" onClick={() => go(true)} disabled={state === 'loading'}>Use G-10, Islamabad instead</button>
     </Task>
   )
 }

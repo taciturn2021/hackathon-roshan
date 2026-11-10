@@ -3,7 +3,7 @@ import { Icon, type IconName } from '../components/Icon'
 import { Task } from '../components/Task'
 import { Alert, AudioMessage, StatePanel, TradeGrid } from '../components/ui'
 import type { OnboardAnswer, OnboardField, Trade } from '../contract'
-import { api, MOCK } from '../lib/api'
+import { api } from '../lib/api'
 import { MOCK_LOCATION } from '../lib/mocks'
 import { playPrompt, toast, useRecorder } from '../lib/audio'
 import { locate, onboardDraft } from '../lib/draft'
@@ -166,7 +166,8 @@ export function WorkerLocation() {
         <Icon name={state === 'loading' ? 'LoaderCircle' : state === 'error' ? 'RefreshCw' : 'LocateFixed'} />
         {state === 'error' ? 'دوبارہ کوشش' : 'لوکیشن دیں'}
       </button>
-      {MOCK && state === 'error' && <button className="button outline full" type="button" lang="en" dir="ltr" onClick={() => go(true)}>Use demo location (G-10, Islamabad)</button>}    </Task>
+      {state === 'error' && <button className="button outline full" type="button" lang="en" dir="ltr" onClick={() => go(true)}>Use G-10, Islamabad</button>}
+    </Task>
   )
 }
 

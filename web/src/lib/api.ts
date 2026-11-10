@@ -1,5 +1,6 @@
-// REST client for the contract in docs/2-TRD.md. Every call goes to /api unless VITE_MOCK_API is on.
+// REST client for the contract in docs/2-TRD.md. Every call goes to /api unless VITE_MOCK_API=true.
 import type { Job, JobStatus, Message, OnboardAnswer, OnboardField, Problem, Review, Trade, Urgency, User, WorkerCard, WorkerDetail } from '../contract'
+import { idToken } from './firebase'
 import { mockApi } from './mocks'
 
 export type Me = { user: User; worker: WorkerCard | null }
@@ -11,22 +12,32 @@ export type NewJob = { worker_id: number; trade: Trade; description: string; urg
 
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  /** The API's error code, e.g. `worker_busy`, `no_session`, `rate_limited`. */
+  code?: string
+  constructor(status: number, message: string, code?: string) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
-export const isWorkerBusy = (e: unknown) => e instanceof ApiError && e.status === 409
+export const isWorkerBusy = (e: unknown) => e instanceof ApiError && (e.code ?? e.message) === 'worker_busy'
 
-// shortcut: no Firebase ID token is attached yet; add `Authorization: Bearer <getIdToken()>` once the identity module serves /auth/session.
 async function http<T>(method: string, path: string, body?: unknown): Promise<T> {
   const isForm = body instanceof FormData
+  const token = await idToken()
   const res = await fetch('/api' + path, {
     method,
-    headers: body && !isForm ? { 'Content-Type': 'application/json' } : undefined,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}),
+    },
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   })
-  if (!res.ok) throw new ApiError(res.status, (await res.text()) || res.statusText)
+  if (!res.ok) {
+    // The API answers errors as {"error": code, "message": text}.
+    const e = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+    throw new ApiError(res.status, e.message ?? res.statusText, e.error)
+  }
   return res.json() as Promise<T>
 }
 
@@ -60,6 +71,6 @@ const httpApi = {
 }
 export type Api = typeof httpApi
 
-/** True while the Go modules behind these endpoints are not written yet (only /api/healthz exists). */
-export const MOCK = import.meta.env.VITE_MOCK_API !== 'false'
+/** VITE_MOCK_API=true runs the screens on the in-browser mock backend (fictional data) instead of the API. */
+export const MOCK = import.meta.env.VITE_MOCK_API === 'true'
 export const api: Api = MOCK ? mockApi : httpApi

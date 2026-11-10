@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { User } from '../contract'
+import { signOut as firebaseSignOut } from 'firebase/auth'
 import { api, MOCK, type Me } from './api'
+import { auth, DEV, setDevUser } from './firebase'
 import { mockSignOut } from './mocks'
 import { navigate } from './router'
 
@@ -17,7 +19,12 @@ function set(next: Me | null) {
 export const useMe = () => useSyncExternalStore((l) => (listeners.add(l), () => void listeners.delete(l)), () => me)
 export const setMe = set
 
+/** True when sign-in screens skip Firebase: the mock backend, or dev tokens against a local API. */
+export const FAKE_AUTH = MOCK || !!DEV
+
+/** Opens the API session. Call it after every Firebase sign-in (the API creates the user on first call). */
 export async function signIn(role: User['role']) {
+  if (DEV) setDevUser(role)
   const next = await api.session(role)
   set(next)
   return next
@@ -28,6 +35,7 @@ export const safeNext = (next: string | null) => (next && /^\/(?![/\\])/.test(ne
 
 export function signOut() {
   if (MOCK) mockSignOut()
+  else if (!DEV) void firebaseSignOut(auth())
   set(null)
   navigate('/')
 }

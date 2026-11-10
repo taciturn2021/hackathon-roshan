@@ -1,10 +1,19 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
+import {
+  createUserWithEmailAndPassword, GoogleAuthProvider, RecaptchaVerifier, signInWithEmailAndPassword,
+  signInWithPhoneNumber, signInWithPopup, type ConfirmationResult,
+} from 'firebase/auth'
 import { Icon } from '../components/Icon'
 import { Task } from '../components/Task'
 import { GoogleMark, StatePanel } from '../components/ui'
 import { playPrompt } from '../lib/audio'
 import { Link, navigate, useLocation } from '../lib/router'
-import { safeNext, signIn } from '../lib/session'
+import { auth } from '../lib/firebase'
+import { FAKE_AUTH, safeNext, signIn } from '../lib/session'
+
+/** Runs a Firebase sign-in step; mock and dev modes skip it and go straight to the API session. */
+const firebase = async (step: () => Promise<unknown>) => { if (!FAKE_AUTH) await step() }
+const google = () => firebase(() => signInWithPopup(auth(), new GoogleAuthProvider()))
 
 export function RolePick() {
   return (
@@ -27,25 +36,63 @@ export function RolePick() {
 
 export function WorkerSignIn() {
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
-  async function go() {
+  const [phone, setPhone] = useState('')
+  const [code, setCode] = useState('')
+  const sent = useRef<ConfirmationResult | null>(null)
+  const captcha = useRef<RecaptchaVerifier | null>(null)
+  const [step, setStep] = useState<'phone' | 'code'>('phone')
+
+  async function run(fn: () => Promise<unknown>) {
     setState('loading')
     try {
-      const me = await signIn('worker')
-      navigate(me.worker ? '/app' : '/worker/onboard')
+      await fn()
+      setState('idle')
     } catch {
       setState('error')
       playPrompt('error').catch(() => undefined)
     }
   }
+  async function finish() {
+    const me = await signIn('worker')
+    navigate(me.worker ? '/app' : '/worker/onboard')
+  }
+  const sendCode = () => run(async () => {
+    await firebase(async () => {
+      captcha.current ??= new RecaptchaVerifier(auth(), 'recaptcha', { size: 'invisible' })
+      sent.current = await signInWithPhoneNumber(auth(), '+92' + phone.replace(/^0/, ''), captcha.current)
+    })
+    setStep('code')
+  })
+  const verify = () => run(async () => {
+    await firebase(() => sent.current!.confirm(code))
+    await finish()
+  })
+  const digits = (set: (v: string) => void, max: number) => (e: { target: { value: string } }) => set(e.target.value.replace(/\D/g, '').slice(0, max))
+  const busy = state === 'loading'
+
   return (
     <Task screen="02-worker-signin" worker prompt="signin">
-      <div style={{ flex: 1 }} />
+      <div className="section-heading"><h1>{step === 'phone' ? 'اپنا فون نمبر لکھیں' : 'میسج میں آیا کوڈ لکھیں'}</h1></div>
       {state === 'error' && <StatePanel kind="error" title="دوبارہ کوشش کریں" />}
-      <button className="button full" type="button" onClick={go} disabled={state === 'loading'}>
-        {state === 'loading' ? <Icon name="LoaderCircle" /> : <GoogleMark />}
-        <span lang="en" dir="ltr">Continue with Google</span>
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); void (step === 'phone' ? sendCode() : verify()) }}>
+        {step === 'phone' ? (
+          <div className="row" dir="ltr" lang="en">
+            <span className="price digits">+92</span>
+            <input className="grow price digits" type="tel" inputMode="numeric" autoComplete="tel-national" aria-label="فون نمبر"
+              placeholder="3001234567" value={phone} onChange={digits(setPhone, 11)} autoFocus />
+          </div>
+        ) : (
+          <input className="price digits" dir="ltr" type="tel" inputMode="numeric" autoComplete="one-time-code" aria-label="کوڈ"
+            placeholder="123456" value={code} onChange={digits(setCode, 6)} autoFocus />
+        )}
+        <button className="button full" type="submit" disabled={busy || (step === 'phone' ? phone.length < 10 : code.length < 6)}>
+          <Icon name={busy ? 'LoaderCircle' : step === 'phone' ? 'ArrowLeft' : 'Check'} />{step === 'phone' ? 'آگے' : 'ٹھیک ہے'}
+        </button>
+      </form>
+      <div id="recaptcha" />
+      <button className="button outline full" type="button" onClick={() => run(async () => { await google(); await finish() })} disabled={busy}>
+        <GoogleMark /><span lang="en" dir="ltr">Continue with Google</span>
       </button>
-      <div style={{ flex: 1 }} />
     </Task>
   )
 }
@@ -71,6 +118,8 @@ export function CustomerSignIn({ mode }: { mode: 'signin' | 'signup' }) {
     if (e && !validate()) return
     setState('loading')
     try {
+      if (e) await firebase(() => (signup ? createUserWithEmailAndPassword : signInWithEmailAndPassword)(auth(), email, password))
+      else await google()
       await signIn('customer')
       navigate(next)
     } catch {
