@@ -259,7 +259,7 @@ dialog nav a{padding:20px 0;border-bottom:1px solid var(--border)}
 .website .main-content p{overflow-wrap:anywhere}
 .support-panel{background:var(--editorial);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:16px}
 .support-panel h2{font-size:28px;line-height:1.2;max-width:22ch}
-.support-panel img{width:100%;aspect-ratio:1.5;object-fit:contain;mix-blend-mode:multiply}
+.support-panel img{width:100%;aspect-ratio:1.5;object-fit:contain}
 .support-panel ol{padding-inline-start:24px;display:grid;gap:16px}
 .support-panel[lang=ur]{font:20px/2 var(--font-urdu)}
 .support-panel[lang=ur] h2{font:28px/2 var(--font-urdu)}
@@ -293,7 +293,7 @@ dialog nav a{padding:20px 0;border-bottom:1px solid var(--border)}
 .hero-footnote span{display:flex;align-items:center;gap:6px}
 .hero-footnote svg{width:16px;height:16px}
 .hero-visual{position:relative;display:flex;flex-direction:column;justify-content:center;min-height:300px}
-.hero-visual>img{width:100%;object-fit:contain;mix-blend-mode:multiply;transform:rotate(-5deg)}
+.hero-visual>img{width:100%;object-fit:contain;transform:rotate(-5deg)}
 .craft-label{border-top:1px solid var(--sidebar-deep);padding-top:16px;margin-left:auto;display:flex;flex-direction:column;gap:12px}
 .craft-label span{font-size:13px}
 .craft-label strong{font-size:20px;font-weight:500;line-height:1.25}
