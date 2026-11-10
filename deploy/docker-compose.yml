@@ -1,0 +1,89 @@
+# Production stack on the Oracle server (ARM64), separate from the dev compose in the repo root.
+# Secrets live in deploy/.env on the server (gitignored; see deploy/.env.example).
+#   cd ~/hackathon && git pull && docker compose -f deploy/docker-compose.yml up -d --build
+# Only 127.0.0.1:9200 (web + /api via nginx) and 127.0.0.1:9201 (api) reach the host; the
+# Cloudflare tunnel maps them to https://hackathon.taciturn2021.dpdns.org and hackathon-api.
+name: hackathon
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: roshan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: roshan
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs only when pgdata is empty.
+      - ../backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roshan"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  api: &backend
+    build: ../backend
+    image: hackathon-backend
+    command: ["api"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://roshan:${POSTGRES_PASSWORD}@postgres:5432/roshan
+      REDIS_ADDR: redis:6379
+      MEDIA_DIR: /media
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?set FIREBASE_PROJECT_ID in deploy/.env}
+      CORS_ORIGINS: https://hackathon.taciturn2021.dpdns.org
+      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY:-}
+      STT_MODEL: ${STT_MODEL:-}
+      STT_FALLBACK_MODEL: ${STT_FALLBACK_MODEL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-}
+      JEV_MODEL: ${JEV_MODEL:-}
+      TTS_MODEL: ${TTS_MODEL:-}
+    volumes:
+      - media:/media
+    ports:
+      - "127.0.0.1:9201:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+    ports: !reset []
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9200:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  redisdata:
+  media:
