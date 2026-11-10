@@ -5,6 +5,32 @@
 # Cloudflare tunnel maps them to https://hackathon.taciturn2021.dpdns.org and hackathon-api.
 name: hackathon
 
+# Shared by api and worker (no ports here: only the api publishes one).
+x-backend: &backend
+  build: ../backend
+  image: hackathon-backend
+  restart: unless-stopped
+  environment:
+    DATABASE_URL: postgres://roshan:${POSTGRES_PASSWORD}@postgres:5432/roshan
+    REDIS_ADDR: redis:6379
+    MEDIA_DIR: /media
+    FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?set FIREBASE_PROJECT_ID in deploy/.env}
+    CORS_ORIGINS: https://hackathon.taciturn2021.dpdns.org
+    AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY:-}
+    STT_MODEL: ${STT_MODEL:-}
+    STT_FALLBACK_MODEL: ${STT_FALLBACK_MODEL:-}
+    LLM_MODEL: ${LLM_MODEL:-}
+    LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-}
+    JEV_MODEL: ${JEV_MODEL:-}
+    TTS_MODEL: ${TTS_MODEL:-}
+  volumes:
+    - media:/media
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -35,38 +61,15 @@ services:
       timeout: 2s
       retries: 30
 
-  api: &backend
-    build: ../backend
-    image: hackathon-backend
+  api:
+    <<: *backend
     command: ["api"]
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgres://roshan:${POSTGRES_PASSWORD}@postgres:5432/roshan
-      REDIS_ADDR: redis:6379
-      MEDIA_DIR: /media
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?set FIREBASE_PROJECT_ID in deploy/.env}
-      CORS_ORIGINS: https://hackathon.taciturn2021.dpdns.org
-      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY:-}
-      STT_MODEL: ${STT_MODEL:-}
-      STT_FALLBACK_MODEL: ${STT_FALLBACK_MODEL:-}
-      LLM_MODEL: ${LLM_MODEL:-}
-      LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-}
-      JEV_MODEL: ${JEV_MODEL:-}
-      TTS_MODEL: ${TTS_MODEL:-}
-    volumes:
-      - media:/media
     ports:
       - "127.0.0.1:9201:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
   worker:
     <<: *backend
     command: ["worker"]
-    ports: !reset []
 
   web:
     build:
