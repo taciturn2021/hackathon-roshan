@@ -79,7 +79,7 @@ export function WorkerProfile({ id }: { id: number }) {
         {w.reviews.map((r) => (
           <div className="review" key={r.job_id}>
             <div className="row between"><strong className="digits">{r.rating} / 5</strong><span className="caption muted">{t('Completed job', 'مکمل کام')}</span></div>
-            {r.body && <p>{r.body}</p>}
+            {r.body && <p dir="auto">{r.body}</p>}
             {r.audio_url && <AudioMessage url={r.audio_url} />}
           </div>
         ))}
@@ -145,7 +145,7 @@ export function OwnProfile() {
           {w.reviews.length === 0 ? <p className="muted">{t('No reviews yet.', 'ابھی کوئی ریویو نہیں۔')}</p> : w.reviews.map((r) => (
             <div className="review" key={r.job_id}>
               <div className="row between"><strong className="digits">{r.rating} / 5</strong><span className="caption muted">{t('Completed job', 'مکمل کام')}</span></div>
-              {r.body && <p>{r.body}</p>}
+              {r.body && <p dir="auto">{r.body}</p>}
               {r.audio_url && <AudioMessage url={r.audio_url} />}
             </div>
           ))}
