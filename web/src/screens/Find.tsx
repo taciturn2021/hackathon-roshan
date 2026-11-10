@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
+import type MapPickerComponent from '../components/MapPicker'
 import { Task } from '../components/Task'
 import { Alert, Badge, Skeletons, StatePanel, TradeGrid, TradeIcon } from '../components/ui'
 import type { Problem as Analysis, Trade, Urgency } from '../contract'
@@ -121,32 +122,71 @@ export function ProblemConfirm() {
   )
 }
 
+/** If the map code itself cannot be loaded, this stands in for it and switches the screen to the plain buttons. */
+const NoMap: typeof MapPickerComponent = ({ onFail }) => {
+  useEffect(onFail, [onFail])
+  return <></>
+}
+// The map (Leaflet and its styles) is loaded only when this screen opens.
+const MapPicker = lazy(() => import('../components/MapPicker').catch(() => ({ default: NoMap })))
+
 export function CustomerLocation() {
   const me = useRole('customer')
   const t = useT()
-  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
-  async function go(demo = false) {
-    setState('loading')
+  const [saved] = useState(problemDraft.get)
+  // Starts where the customer last was, or at G-10 where most workers are.
+  const [pos, setPos] = useState({ lat: saved.lat ?? MOCK_LOCATION.lat, lng: saved.lng ?? MOCK_LOCATION.lng })
+  const [state, setState] = useState<'idle' | 'locating' | 'denied'>('idle')
+  const [noMap, setNoMap] = useState(false)
+
+  const confirm = (p = pos) => { problemDraft.set({ ...p, radius_km: 5 }); navigate('/app/workers') }
+  async function mine(thenConfirm = false) {
+    setState('locating')
     try {
-      problemDraft.set({ ...(demo ? MOCK_LOCATION : await locate()), radius_km: 5 })
-      navigate('/app/workers')
+      const here = await locate()
+      setPos(here)
+      setState('idle')
+      if (thenConfirm) confirm(here)
     } catch {
-      setState('error')
+      setState('denied')
     }
   }
   if (!me) return null
+  const denied = state === 'denied' && (
+    <Alert tone="error" title={t('We couldn’t get your location', 'آپ کی لوکیشن نہیں مل سکی')}
+      text={noMap ? t('Allow location access in your browser, then try again.', 'براؤزر میں لوکیشن کی اجازت دیں، پھر دوبارہ کوشش کریں۔')
+        : t('Allow location access in your browser, or move the map to your place.', 'براؤزر میں لوکیشن کی اجازت دیں، یا نقشہ اپنی جگہ پر لے آئیں۔')} />
+  )
+
+  // Without map tiles (offline or blocked) the step works as it did before the map: two buttons.
+  if (noMap) return (
+    <Task screen="23-customer-location">
+      <div className="section-heading"><h1>{t('Share your location', 'اپنی لوکیشن بتائیں')}</h1><p className="muted">{t('The map could not be loaded. Share your location to find workers around you.', 'نقشہ نہیں کھل سکا۔ قریب کے کاریگر ڈھونڈنے کے لیے لوکیشن بتائیں۔')}</p></div>
+      {denied}
+      <button className="button full" type="button" onClick={() => mine(true)} disabled={state === 'locating'}>
+        <Icon name={state === 'locating' ? 'LoaderCircle' : 'LocateFixed'} />{t('Use my location', 'میری لوکیشن استعمال کریں')}
+      </button>
+      <button className="button outline full" type="button" onClick={() => confirm(MOCK_LOCATION)}>{t('Use G-10, Islamabad instead', 'اس کی جگہ G-10، اسلام آباد استعمال کریں')}</button>
+    </Task>
+  )
+
   return (
     <Task screen="23-customer-location">
-      <div className="section-heading"><h1>{t('Share your location', 'اپنی لوکیشن بتائیں')}</h1><p className="muted">{t('Share your location to find available workers around you.', 'لوکیشن بتائیں تاکہ آپ کے قریب دستیاب کاریگر مل سکیں۔')}</p></div>
-      {state === 'error'
-        ? <StatePanel kind="error" title={t('We couldn’t get your location', 'آپ کی لوکیشن نہیں مل سکی')} text={t('Allow location access in your browser, then try again. We never guess where you are.', 'براؤزر میں لوکیشن کی اجازت دیں، پھر دوبارہ کوشش کریں۔ ہم آپ کی جگہ کا اندازہ خود نہیں لگاتے۔')} />
-        : <div className="state-panel"><div className="empty-art"><Icon name="LocateFixed" /></div></div>}
-      <p className="note">{t('Your location is used for nearby matching. This is not live worker tracking.', 'آپ کی لوکیشن صرف قریبی کاریگر ڈھونڈنے کے لیے ہے۔ یہ کاریگر کی لائیو ٹریکنگ نہیں ہے۔')}</p>
-      <button className="button full" type="button" onClick={() => go()} disabled={state === 'loading'}>
-        <Icon name={state === 'loading' ? 'LoaderCircle' : state === 'error' ? 'RefreshCw' : 'LocateFixed'} />
-        {state === 'error' ? t('Try again', 'دوبارہ کوشش') : t('Use my location', 'میری لوکیشن استعمال کریں')}
-      </button>
-      <button className="button outline full" type="button" onClick={() => go(true)} disabled={state === 'loading'}>{t('Use G-10, Islamabad instead', 'اس کی جگہ G-10، اسلام آباد استعمال کریں')}</button>
+      <div className="section-heading">
+        <h1>{t('Where is the job?', 'کام کہاں ہے؟')}</h1>
+        <p className="muted">{t('Move the map until the pin is on your place. Workers inside the circle are searched.', 'نقشہ ہلائیں یہاں تک کہ پن آپ کی جگہ پر آ جائے۔ دائرے کے اندر کے کاریگر ڈھونڈے جاتے ہیں۔')}</p>
+      </div>
+      {denied}
+      <Suspense fallback={<div className="map-picker loading"><Skeletons count={1} /></div>}>
+        <MapPicker at={pos} radiusKm={5} onMove={setPos} onFail={() => setNoMap(true)}>
+          <button className="icon-button map-locate" type="button" disabled={state === 'locating'} onClick={() => mine()}
+            aria-label={t('Go to my location', 'میری لوکیشن پر جائیں')} title={t('Go to my location', 'میری لوکیشن پر جائیں')}>
+            <Icon name={state === 'locating' ? 'LoaderCircle' : 'LocateFixed'} />
+          </button>
+        </MapPicker>
+      </Suspense>
+      <button className="button full" type="button" onClick={() => confirm()}><Icon name="Check" />{t('Use this location', 'یہی جگہ ہے')}</button>
+      <p className="note">{t('Used only to find workers near you. This is not live tracking.', 'صرف قریب کے کاریگر ڈھونڈنے کے لیے۔ یہ لائیو ٹریکنگ نہیں ہے۔')}</p>
     </Task>
   )
 }
