@@ -78,7 +78,7 @@ export function Badge({ tone, children }: { tone?: 'success' | 'warning' | 'erro
 }
 
 export function TradeIcon({ trade, small }: { trade: Trade; small?: boolean }) {
-  return <span className={`trade-icon ${small ? 'small' : ''}`}><Icon name={TRADES[trade].icon} className="icon-lg" /></span>
+  return <span className={`trade-icon ${small ? 'small' : ''}`} data-trade={trade}><Icon name={TRADES[trade].icon} className="icon-lg" /></span>
 }
 
 /** The five trade pictures as a picker. */

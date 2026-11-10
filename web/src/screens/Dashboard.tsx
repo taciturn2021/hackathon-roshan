@@ -118,7 +118,7 @@ function CustomerDashboard() {
           <header className="panel-head"><h2>{t('Need something fixed?', 'کچھ ٹھیک کروانا ہے؟')}</h2></header>
           <div className="quick-trades">
             {(Object.keys(TRADES) as Trade[]).map((k) => (
-              <Link key={k} href="/app/find/confirm" className="quick-trade" onClick={() => problemDraft.set({ trade: k, trade_confidence: 1, description: '', price_range: null })}><Icon name={TRADES[k].icon} />{t(TRADES[k].en, TRADES[k].ur)}</Link>
+              <Link key={k} href="/app/find/confirm" className="quick-trade" data-trade={k} onClick={() => problemDraft.set({ trade: k, trade_confidence: 1, description: '', price_range: null })}><Icon name={TRADES[k].icon} />{t(TRADES[k].en, TRADES[k].ur)}</Link>
             ))}
           </div>
         </section>

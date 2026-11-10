@@ -487,3 +487,43 @@ html[lang=ur] :is(.tile-label,.data-table th,.badge,.eyebrow,.step-rail li,.flow
 .field :is(input,textarea),input.digits{border-radius:10px}
 /* Filter tabs: two per row on a phone so their labels are never cut off. */
 @media(max-width:520px){.segment .button{flex:1 1 calc(50% - 4px)}}
+
+/* ---------- Colour: the landing page's accents carried into the app ---------- */
+/* The app read as green and white only. These bring in the same amber, terracotta, lime and blue. */
+
+/* A terracotta strip tops the signed-in app, like the announcement bar on the landing page. */
+.app-body::before{content:"";display:block;height:4px;background:#B45309}
+.app-action{background:#B45309;border-color:#B45309}
+.app-action:not(.outline,.ghost,.danger,.destructive-outline,.link):hover{background-color:#92400E}
+
+/* Each trade has one colour, used wherever its icon appears: tiles, lists, tables and cards. */
+[data-trade=electrician]{--trade-bg:#FEF3C7;--trade-fg:#B45309}
+[data-trade=plumber]{--trade-bg:#E0F2FE;--trade-fg:#0369A1}
+[data-trade=ac_technician]{--trade-bg:#CFFAFE;--trade-fg:#0E7490}
+[data-trade=carpenter]{--trade-bg:#FFEDD5;--trade-fg:#9A3412}
+[data-trade=mechanic]{--trade-bg:#E7E5E4;--trade-fg:#44403C}
+.trade-icon[data-trade],.trade-dot[data-trade]{background:var(--trade-bg);color:var(--trade-fg)}
+.quick-trade[data-trade] .icon,.sp-trade[data-trade] svg{color:var(--trade-fg)}
+.sp .sp-trade[data-trade].in:hover{background:var(--trade-bg);border-color:var(--trade-fg)}
+.quick-trade[data-trade]:hover{background:var(--trade-bg);border-color:var(--trade-fg)}
+
+/* Stat tiles: each has its own coloured icon chip, so a row of numbers is told apart at a glance. */
+.tile-label .icon{box-sizing:content-box;padding:5px;border-radius:8px;background:var(--sage);color:var(--ink)}
+.stat-tiles>.tile:nth-child(2) .tile-label .icon{background:#FEF3C7;color:#B45309}
+.stat-tiles>.tile:nth-child(3) .tile-label .icon{background:#E0F2FE;color:#0369A1}
+.stat-tiles>.tile:nth-child(4) .tile-label .icon{background:#FFEDD5;color:#9A3412}
+.tile.accent .tile-label .icon{background:var(--lime);color:var(--ink)}
+
+/* Panel headings carry a small colour mark, rotating through the palette. */
+.panel-head h2{display:flex;align-items:center;gap:10px}
+.panel-head h2::before{content:"";width:10px;height:10px;border-radius:3px;background:#F59E0B;flex-shrink:0}
+.dash-grid>.panel:nth-child(2) .panel-head h2::before{background:#0369A1}
+.dash-grid>.panel:nth-child(3) .panel-head h2::before{background:var(--lime);outline:1px solid var(--ink)}
+.dash-grid>.panel:nth-child(4) .panel-head h2::before{background:#B45309}
+
+/* Money is amber everywhere, avatars are warm, and the current flow step is amber. */
+.avatar{background:#FFEDD5;color:#9A3412}
+.app-user .avatar{background:var(--lime);color:var(--ink)}
+.step-rail li[aria-current]>span{background:#B45309;border-color:#B45309;color:#fff}
+.feed-icon.done{background:var(--sage);color:var(--ink)}
+.empty-panel .empty-art{background:#FEF3C7;color:#B45309}

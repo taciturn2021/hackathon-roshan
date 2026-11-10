@@ -23,7 +23,7 @@ export function JobsTable({ jobs }: { jobs: Job[] }) {
             <tr key={j.id}>
               <td data-label={cols.job}>
                 <Link className="row-link" href={jobHref(j)}>
-                  <span className="trade-dot"><Icon name={TRADES[j.trade].icon} /></span>
+                  <span className="trade-dot" data-trade={j.trade}><Icon name={TRADES[j.trade].icon} /></span>
                   <span><strong>{t(TRADES[j.trade].en, TRADES[j.trade].ur)}</strong><small className="muted clamp">{j.description}</small></span>
                 </Link>
               </td>

@@ -151,7 +151,7 @@ export function Landing() {
         <p className="sp-mono center">{t('Five trades across Islamabad & Rawalpindi', 'اسلام آباد اور راولپنڈی میں پانچ ہنر')}</p>
         <div className="sp-trades">
           {TRADE_KEYS.map((k, i) => (
-            <Link key={k} className="sp-trade" href="/app/find/confirm" data-reveal style={{ transitionDelay: `${i * 70}ms` }}
+            <Link key={k} className="sp-trade" data-trade={k} href="/app/find/confirm" data-reveal style={{ transitionDelay: `${i * 70}ms` }}
               onClick={() => problemDraft.set({ trade: k, trade_confidence: 1, description: '', price_range: null })}>
               <Icon name={TRADES[k].icon} /><strong>{t(TRADES[k].en, TRADES[k].ur)}</strong><small>{t(TRADES[k].blurb, TRADES[k].blurbUr)}</small>
             </Link>
