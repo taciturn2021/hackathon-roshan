@@ -5,4 +5,4 @@ media/
 .DS_Store
 /tmp/
 /.playwright-mcp/
-/docs/
+CLAUDE.md
