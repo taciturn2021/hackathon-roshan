@@ -6,6 +6,7 @@ import { Link, navigate, useLocation } from '../lib/router'
 import { signOut, useMe } from '../lib/session'
 import { initials } from '../lib/trades'
 import { Icon, type IconName } from './Icon'
+import { Wordmark } from './Wordmark'
 
 /** True inside the signed-in app, so shared page layouts drop their marketing container. */
 export const InApp = createContext(false)
@@ -29,8 +30,7 @@ function SidebarContent({ nav, path, worker, name, onNavigate }: { nav: NavItem[
   return (
     <>
       <Link className="app-brand" href="/app" onClick={onNavigate}>
-        <span className="brand-mark"><Icon name="Sunrise" /></span>
-        <span lang="en" dir="ltr">Roshan Rozgar</span>
+        <Wordmark />
       </Link>
       <nav className="app-nav" aria-label={t('App navigation', 'مینو')}>
         {nav.map((item) => (

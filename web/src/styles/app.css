@@ -384,3 +384,21 @@ html[lang=ur] .sp .sp-statement{line-height:1.9}
   .sp [data-reveal]{opacity:1;transform:none;transition:none}
   .sp-card.float,.sp-chip,.sp-mic{animation:none}
 }
+
+/* ---------- Logo and site header ---------- */
+.wordmark{display:inline-flex;align-items:flex-start;gap:3px;font:800 20px/1 var(--font-sans);letter-spacing:-.045em;color:#102A1B;white-space:nowrap}
+.wordmark i{width:8px;height:8px;margin-top:-2px;border-radius:50%;background:#F59E0B}
+.site-footer .wordmark,.app-sidebar .wordmark,.app-drawer .wordmark{color:#fff}
+.app-brand{padding:10px 8px}
+/* Three zones: logo, centred links, one quiet button. */
+.site-header{background:var(--card);border-bottom-color:transparent}
+.header-inner{display:grid;grid-template-columns:1fr auto 1fr;gap:16px}
+.header-inner>.brand{grid-column:1;justify-self:start}
+.header-inner>.desktop-links{grid-column:2;margin:0}
+.header-inner>.row{grid-column:3;justify-self:end}
+.desktop-links a{font:500 14px/1 var(--font-mono);color:var(--foreground);transition:color .12s var(--ease)}
+.desktop-links a:hover{color:var(--primary)}
+html[lang=ur] .desktop-links a,html[lang=ur] .header-pill{font:500 17px/2 var(--font-urdu)}
+.header-pill{display:none;align-items:center;min-height:44px;padding:0 16px;border-radius:8px;background:#EFF1EE;color:var(--foreground);font:500 14px/1 var(--font-mono);text-decoration:none;white-space:nowrap;transition:background-color .12s var(--ease)}
+.header-pill:hover{background:#E2E6E0}
+@media(min-width:640px){.header-pill{display:inline-flex}}
