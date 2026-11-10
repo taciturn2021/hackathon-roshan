@@ -13,6 +13,12 @@ import { FAKE_AUTH, safeNext, signIn } from '../lib/session'
 
 /** Runs a Firebase sign-in step; mock and dev modes skip it and go straight to the API session. */
 const firebase = async (step: () => Promise<unknown>) => { if (!FAKE_AUTH) await step() }
+/** Logs a sign-in failure and returns its code (e.g. `auth/too-many-requests`) to show under the message. */
+function failure(e: unknown): string {
+  console.error('sign-in failed', e)
+  return (e as { code?: string }).code ?? (e instanceof Error ? e.message : String(e))
+}
+const Why = ({ code }: { code: string }) => <p className="caption muted" lang="en" dir="ltr" style={{ textAlign: 'center' }}>{code}</p>
 const google = () => firebase(() => signInWithPopup(auth(), new GoogleAuthProvider()))
 
 export function RolePick() {
@@ -40,6 +46,7 @@ function PhoneForm({ ur = false, onDone }: { ur?: boolean; onDone: () => Promise
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [why, setWhy] = useState('')
   const sent = useRef<ConfirmationResult | null>(null)
   const captcha = useRef<RecaptchaVerifier | null>(null)
 
@@ -58,8 +65,12 @@ function PhoneForm({ ur = false, onDone }: { ur?: boolean; onDone: () => Promise
         await onDone()
       }
       setState('idle')
-    } catch {
+    } catch (e) {
+      setWhy(failure(e))
       setState('error')
+      // A used reCAPTCHA cannot verify again: start a fresh one for the next try.
+      captcha.current?.clear()
+      captcha.current = null
       if (ur) playPrompt('error').catch(() => undefined)
     }
   }
@@ -72,8 +83,9 @@ function PhoneForm({ ur = false, onDone }: { ur?: boolean; onDone: () => Promise
     <form className="stack" onSubmit={submit}>
       {ur ? <div className="section-heading"><h1>{title}</h1></div> : <span className="field">{title}</span>}
       {state === 'error' && (ur
-        ? <StatePanel kind="error" title="دوبارہ کوشش کریں" />
+        ? <StatePanel kind="error" title={step === 'phone' ? 'نمبر نہیں چلا، دوبارہ کوشش کریں' : 'کوڈ غلط ہے، دوبارہ لکھیں'} />
         : <span className="field-error">That didn’t work. Check the {step === 'phone' ? 'number' : 'code'} and try again.</span>)}
+      {state === 'error' && <Why code={why} />}
       {step === 'phone' ? (
         <div className="row" dir="ltr" lang="en">
           <span className="digits" style={big}>+92</span>
@@ -95,6 +107,7 @@ function PhoneForm({ ur = false, onDone }: { ur?: boolean; onDone: () => Promise
 
 export function WorkerSignIn() {
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [why, setWhy] = useState('')
   async function finish() {
     const me = await signIn('worker')
     navigate(me.worker ? '/app' : '/worker/onboard')
@@ -104,7 +117,8 @@ export function WorkerSignIn() {
     try {
       await google()
       await finish()
-    } catch {
+    } catch (e) {
+      setWhy(failure(e))
       setState('error')
       playPrompt('error').catch(() => undefined)
     }
@@ -112,7 +126,7 @@ export function WorkerSignIn() {
   return (
     <Task screen="02-worker-signin" worker prompt="signin">
       <PhoneForm ur onDone={finish} />
-      {state === 'error' && <StatePanel kind="error" title="دوبارہ کوشش کریں" />}
+      {state === 'error' && <><StatePanel kind="error" title="دوبارہ کوشش کریں" /><Why code={why} /></>}
       <button className="button outline full" type="button" onClick={withGoogle} disabled={state === 'loading'}>
         <GoogleMark /><span lang="en" dir="ltr">Continue with Google</span>
       </button>
@@ -127,6 +141,7 @@ export function CustomerSignIn({ mode }: { mode: 'signin' | 'signup' }) {
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [why, setWhy] = useState('')
   const signup = mode === 'signup'
 
   const validate = () => {
@@ -145,7 +160,8 @@ export function CustomerSignIn({ mode }: { mode: 'signin' | 'signup' }) {
       else await google()
       await signIn('customer')
       navigate(next)
-    } catch {
+    } catch (e) {
+      setWhy(failure(e))
       setState('error')
     }
   }
@@ -153,6 +169,7 @@ export function CustomerSignIn({ mode }: { mode: 'signin' | 'signup' }) {
   if (state === 'error') return (
     <Task screen="03-customer-signin">
       <StatePanel kind="error" title="We couldn’t sign you in" text="Check your email and password, then try again." />
+      <Why code={why} />
       <button className="button full" type="button" onClick={() => setState('idle')}><Icon name="RefreshCw" />Try again</button>
     </Task>
   )

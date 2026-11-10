@@ -203,3 +203,6 @@
 /* The one standout CTA on the landing page */
 .hero-actions .button{background:var(--highlight);color:var(--foreground)}
 .hero-actions .button:hover{background-color:var(--highlight-hover)}
+
+/* Phone sign-in needs Google's invisible reCAPTCHA; its floating badge covered the buttons. */
+.grecaptcha-badge { visibility: hidden; }
