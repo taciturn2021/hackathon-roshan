@@ -102,7 +102,8 @@ func main() {
 
 // registerTasks mounts the internal/tasks handlers (owner: Nouman). Contract: internal/platform/queue.
 // Each handler reads its payload (queue.MessagePayload / queue.JobPayload), does the AI work and writes
-// results back with svc.jbs.SetTranscript, svc.jbs.SetBriefAudio, svc.rvs.SetTags, svc.wks.SetTrustSummary.
+// results back with svc.jbs.SetTranscript, svc.jbs.SetMessageSpeech, svc.jbs.SetBrief, svc.rvs.SetTags,
+// svc.wks.SetTrustSummary (each persists and pushes the WebSocket update).
 func registerTasks(mux *asynq.ServeMux, svc *services) {
 	_ = svc // replaced by e.g. tasks.Register(mux, tasks.Deps{...}) when internal/tasks lands
 }
@@ -164,6 +165,7 @@ func newServices(db *pgxpool.Pool, rdb *redis.Client, verifier identity.Verifier
 		Publish:        realtime.NewPublisher(rdb).Publish,
 		OnJobCreated:   enqueue("job brief", q.JobBrief),
 		OnVoiceMessage: enqueue("transcribe", q.Transcribe),
+		OnTextMessage:  enqueue("speech", q.Speech),
 	})
 	s.rvs = reviews.NewService(reviews.Deps{
 		DB: db, Media: s.media, Redis: rdb, Jobs: s.jbs,

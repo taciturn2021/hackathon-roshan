@@ -31,6 +31,7 @@ type Job struct {
 	PhotoURL      *string            `json:"photo_url"`
 	Status        string             `json:"status"`
 	AgreedPrice   *int               `json:"agreed_price"`
+	BriefUr       *string            `json:"brief_ur"`
 	BriefAudioURL *string            `json:"brief_audio_url"`
 	CreatedAt     time.Time          `json:"created_at"`
 	CompletedAt   *time.Time         `json:"completed_at"`
@@ -45,6 +46,8 @@ type Message struct {
 	Kind           string    `json:"kind"`
 	Body           *string   `json:"body"`
 	AudioURL       *string   `json:"audio_url"`
+	BodyUr         *string   `json:"body_ur"`
+	SpeechURL      *string   `json:"speech_url"`
 	SuggestedPrice *int      `json:"suggested_price"`
 	OfferPrice     *int      `json:"offer_price"`
 	OfferStatus    *string   `json:"offer_status"`
@@ -77,17 +80,18 @@ type Deps struct {
 	Publish        func(ctx context.Context, to []int64, ev realtime.Event) error    // WebSocket fan-out
 	OnJobCreated   func(ctx context.Context, jobID int64)                            // queue: job read-aloud
 	OnVoiceMessage func(ctx context.Context, messageID int64)                        // queue: transcript + price detection
+	OnTextMessage  func(ctx context.Context, messageID int64)                        // queue: Urdu text + speech for the worker
 }
 
 type Service struct{ d Deps }
 
 func NewService(d Deps) *Service { return &Service{d: d} }
 
-const msgCols = `id, job_id, sender_id, kind, body, audio_url, suggested_price, offer_price, offer_status, created_at`
+const msgCols = `id, job_id, sender_id, kind, body, audio_url, body_ur, speech_url, suggested_price, offer_price, offer_status, created_at`
 
 func scanMessage(row pgx.Row) (Message, error) {
 	var m Message
-	err := row.Scan(&m.ID, &m.JobID, &m.SenderID, &m.Kind, &m.Body, &m.AudioURL, &m.SuggestedPrice,
+	err := row.Scan(&m.ID, &m.JobID, &m.SenderID, &m.Kind, &m.Body, &m.AudioURL, &m.BodyUr, &m.SpeechURL, &m.SuggestedPrice,
 		&m.OfferPrice, &m.OfferStatus, &m.CreatedAt)
 	return m, err
 }
@@ -142,7 +146,7 @@ func (s *Service) Build(ctx context.Context, rows []Row) ([]Job, error) {
 		out = append(out, Job{
 			ID: r.ID, Customer: cust, Worker: card, Trade: r.Trade, Description: r.Description,
 			Urgency: r.Urgency, PhotoURL: r.PhotoURL, Status: r.Status, AgreedPrice: r.AgreedPrice,
-			BriefAudioURL: r.BriefAudioURL, CreatedAt: r.CreatedAt, CompletedAt: r.CompletedAt,
+			BriefUr: r.BriefUr, BriefAudioURL: r.BriefAudioURL, CreatedAt: r.CreatedAt, CompletedAt: r.CompletedAt,
 			Reviewed: reviewed[r.ID],
 		})
 	}
@@ -318,10 +322,22 @@ func (s *Service) PostText(ctx context.Context, jobID, userID int64, body string
 	if n := len([]rune(body)); n < 1 || n > 2000 {
 		return Message{}, platform.BadRequest("body is required (max 2000 characters)")
 	}
-	return s.post(ctx, jobID, userID, false, func(tx pgx.Tx) (Message, error) {
+	var customerID int64
+	msg, err := s.post(ctx, jobID, userID, false, func(tx pgx.Tx) (Message, error) {
+		if err := tx.QueryRow(ctx, `SELECT customer_id FROM jobs WHERE id = $1`, jobID).Scan(&customerID); err != nil {
+			return Message{}, err
+		}
 		return scanMessage(tx.QueryRow(ctx, `INSERT INTO messages (job_id, sender_id, kind, body)
 			VALUES ($1, $2, 'text', $3) RETURNING `+msgCols, jobID, userID, body))
 	})
+	if err != nil {
+		return Message{}, err
+	}
+	// The worker is the one who listens, so only the customer's text needs Urdu text + speech.
+	if s.d.OnTextMessage != nil && userID == customerID {
+		s.d.OnTextMessage(ctx, msg.ID)
+	}
+	return msg, nil
 }
 
 // PostOffer sends a price offer (pending until the other party answers).
@@ -486,9 +502,11 @@ func (s *Service) PriceRange(ctx context.Context, trade string) (*workers.PriceR
 
 func round50(v float64) int { return int(math.Round(v/50)) * 50 }
 
-// SetBriefAudio stores the Urdu read-aloud brief for the worker (called from the queue).
-func (s *Service) SetBriefAudio(ctx context.Context, jobID int64, url string) error {
-	row, err := scanRow(s.d.DB.QueryRow(ctx, `UPDATE jobs SET brief_audio_url = $2 WHERE id = $1 RETURNING `+rowCols, jobID, url))
+// SetBrief stores the Urdu brief text and its read-aloud audio for the worker (called from the queue).
+// Either part may be empty (stored as NULL), e.g. text only when Urdu speech is poor.
+func (s *Service) SetBrief(ctx context.Context, jobID int64, briefUr, audioURL string) error {
+	row, err := scanRow(s.d.DB.QueryRow(ctx, `UPDATE jobs SET brief_ur = NULLIF($2, ''), brief_audio_url = NULLIF($3, '')
+		WHERE id = $1 RETURNING `+rowCols, jobID, briefUr, audioURL))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return platform.ErrNotFound
 	}
@@ -500,6 +518,24 @@ func (s *Service) SetBriefAudio(ctx context.Context, jobID int64, url string) er
 		return err
 	}
 	s.publish(ctx, parties(row), realtime.Event{Type: "job.updated", Data: job})
+	return nil
+}
+
+// SetMessageSpeech stores the Urdu rewrite of a text message and its audio (called from the queue).
+func (s *Service) SetMessageSpeech(ctx context.Context, messageID int64, bodyUr, speechURL string) error {
+	msg, err := scanMessage(s.d.DB.QueryRow(ctx, `UPDATE messages SET body_ur = NULLIF($2, ''), speech_url = NULLIF($3, '')
+		WHERE id = $1 AND kind = 'text' RETURNING `+msgCols, messageID, bodyUr, speechURL))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return platform.ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	row, err := s.loadRow(ctx, msg.JobID)
+	if err != nil {
+		return err
+	}
+	s.publish(ctx, parties(row), realtime.Event{Type: "message.updated", Data: msg})
 	return nil
 }
 

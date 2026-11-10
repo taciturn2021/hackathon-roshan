@@ -79,6 +79,7 @@ type env struct {
 	events  []pubEvent
 	created []int64
 	voices  []int64
+	texts   []int64
 }
 
 func newEnv(t *testing.T, mod func(*Deps)) *env {
@@ -102,6 +103,11 @@ func newEnv(t *testing.T, mod func(*Deps)) *env {
 			e.mu.Lock()
 			defer e.mu.Unlock()
 			e.voices = append(e.voices, id)
+		},
+		OnTextMessage: func(_ context.Context, id int64) {
+			e.mu.Lock()
+			defer e.mu.Unlock()
+			e.texts = append(e.texts, id)
 		},
 	}
 	if mod != nil {
@@ -632,24 +638,119 @@ func TestPriceRange(t *testing.T) {
 	}
 }
 
-func TestSetBriefAudioAndTranscript(t *testing.T) {
+func TestSetBrief(t *testing.T) {
 	e := newEnv(t, nil)
 	c, w := e.customer(), e.worker()
 	id := mkJob(t, e.db, c, w)
-	if err := e.svc.SetBriefAudio(ctx, id, "/media/audio/brief.mp3"); err != nil {
+	if err := e.svc.SetBrief(ctx, id, "ٹپکتا نل", "/media/audio/brief.mp3"); err != nil {
 		t.Fatal(err)
 	}
-	var url *string
-	e.db.QueryRow(ctx, `SELECT brief_audio_url FROM jobs WHERE id = $1`, id).Scan(&url)
-	if url == nil || *url != "/media/audio/brief.mp3" {
-		t.Fatalf("brief url %v", url)
+	var ur, url *string
+	e.db.QueryRow(ctx, `SELECT brief_ur, brief_audio_url FROM jobs WHERE id = $1`, id).Scan(&ur, &url)
+	if ur == nil || *ur != "ٹپکتا نل" || url == nil || *url != "/media/audio/brief.mp3" {
+		t.Fatalf("brief %v %v", ur, url)
 	}
 	if evs := e.take(); !hasEvent(evs, "job.updated", c, w) {
 		t.Fatalf("events %+v", evs)
 	}
-	if err := e.svc.SetBriefAudio(ctx, 999999, "x"); code(err) != "not_found" {
+
+	// empty audio: text only
+	id2 := mkJob(t, e.db, c, e.worker())
+	if err := e.svc.SetBrief(ctx, id2, "صرف متن", ""); err != nil {
+		t.Fatal(err)
+	}
+	e.db.QueryRow(ctx, `SELECT brief_ur, brief_audio_url FROM jobs WHERE id = $1`, id2).Scan(&ur, &url)
+	if ur == nil || *ur != "صرف متن" || url != nil {
+		t.Fatalf("text-only brief %v %v", ur, url)
+	}
+
+	// Job JSON carries brief_ur
+	job, _, err := e.svc.Get(ctx, id, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(job)
+	var m map[string]any
+	json.Unmarshal(raw, &m)
+	if m["brief_ur"] != "ٹپکتا نل" || m["brief_audio_url"] != "/media/audio/brief.mp3" {
+		t.Fatalf("job json %s", raw)
+	}
+
+	if err := e.svc.SetBrief(ctx, 999999, "x", "y"); code(err) != "not_found" {
 		t.Fatalf("missing job: %q", code(err))
 	}
+}
+
+func TestSetMessageSpeech(t *testing.T) {
+	e := newEnv(t, nil)
+	c, w := e.customer(), e.worker()
+	id := mkJob(t, e.db, c, w)
+
+	tm, err := e.svc.PostText(ctx, id, c, "tap is leaking")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(tm)
+	var m map[string]any
+	json.Unmarshal(raw, &m)
+	if v, ok := m["body_ur"]; !ok || v != nil {
+		t.Fatalf("body_ur default in %s", raw)
+	}
+	if v, ok := m["speech_url"]; !ok || v != nil {
+		t.Fatalf("speech_url default in %s", raw)
+	}
+	e.take()
+	if err := e.svc.SetMessageSpeech(ctx, tm.ID, "نل ٹپک رہا ہے", "/media/audio/s.mp3"); err != nil {
+		t.Fatal(err)
+	}
+	var ur, sp *string
+	e.db.QueryRow(ctx, `SELECT body_ur, speech_url FROM messages WHERE id = $1`, tm.ID).Scan(&ur, &sp)
+	if ur == nil || *ur != "نل ٹپک رہا ہے" || sp == nil || *sp != "/media/audio/s.mp3" {
+		t.Fatalf("speech %v %v", ur, sp)
+	}
+	if evs := e.take(); !hasEvent(evs, "message.updated", c, w) {
+		t.Fatalf("events %+v", evs)
+	}
+
+	// only text messages
+	v, err := e.svc.PostVoice(ctx, id, c, "/media/audio/v.webm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.SetMessageSpeech(ctx, v.ID, "x", "y"); code(err) != "not_found" {
+		t.Fatalf("voice message: %q", code(err))
+	}
+	offer := mkOffer(t, e.db, id, w, 1500)
+	if err := e.svc.SetMessageSpeech(ctx, offer, "x", "y"); code(err) != "not_found" {
+		t.Fatalf("offer message: %q", code(err))
+	}
+	if err := e.svc.SetMessageSpeech(ctx, 999999, "x", "y"); code(err) != "not_found" {
+		t.Fatalf("missing message: %q", code(err))
+	}
+}
+
+func TestOnTextMessageOnlyForCustomer(t *testing.T) {
+	e := newEnv(t, nil)
+	c, w := e.customer(), e.worker()
+	id := mkJob(t, e.db, c, w)
+	cm, err := e.svc.PostText(ctx, id, c, "hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.PostText(ctx, id, w, "on my way"); err != nil {
+		t.Fatal(err)
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if len(e.texts) != 1 || e.texts[0] != cm.ID {
+		t.Fatalf("OnTextMessage calls = %v, want only [%d]", e.texts, cm.ID)
+	}
+}
+
+func TestTranscript(t *testing.T) {
+	e := newEnv(t, nil)
+	c, w := e.customer(), e.worker()
+	id := mkJob(t, e.db, c, w)
 
 	v, err := e.svc.PostVoice(ctx, id, c, "/media/audio/v.webm")
 	if err != nil {

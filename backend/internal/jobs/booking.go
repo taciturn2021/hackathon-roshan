@@ -38,18 +38,19 @@ type Row struct {
 	Lat, Lng      float64
 	Status        string
 	AgreedPrice   *int
+	BriefUr       *string
 	BriefAudioURL *string
 	CreatedAt     time.Time
 	CompletedAt   *time.Time
 }
 
 const rowCols = `id, customer_id, worker_id, trade, description, urgency, photo_url, lat, lng,
-	status, agreed_price, brief_audio_url, created_at, completed_at`
+	status, agreed_price, brief_ur, brief_audio_url, created_at, completed_at`
 
 func scanRow(row pgx.Row) (Row, error) {
 	var j Row
 	err := row.Scan(&j.ID, &j.CustomerID, &j.WorkerID, &j.Trade, &j.Description, &j.Urgency, &j.PhotoURL,
-		&j.Lat, &j.Lng, &j.Status, &j.AgreedPrice, &j.BriefAudioURL, &j.CreatedAt, &j.CompletedAt)
+		&j.Lat, &j.Lng, &j.Status, &j.AgreedPrice, &j.BriefUr, &j.BriefAudioURL, &j.CreatedAt, &j.CompletedAt)
 	return j, err
 }
 

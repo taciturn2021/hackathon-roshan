@@ -63,27 +63,32 @@ type Stats struct {
 	Tags      []string
 }
 
-type ProfileDraft struct {
-	Name            *string  `json:"name"`
-	Trade           *string  `json:"trade"`
-	TradeConfidence float64  `json:"trade_confidence"`
-	Skills          []string `json:"skills"`
-	YearsExp        *int     `json:"years_exp"`
-	Area            *string  `json:"area"`
-	Transcript      string   `json:"transcript"`
-	IntroAudioURL   string   `json:"intro_audio_url"`
-	Missing         []string `json:"missing"`
+// OnboardFields are the four onboarding questions, in the order they are asked.
+var OnboardFields = []string{"name", "trade", "area", "years_exp"}
+
+// OnboardProfile holds only the fields that were understood; the rest are absent from the JSON.
+type OnboardProfile struct {
+	Name     *string  `json:"name,omitempty"`
+	Trade    *string  `json:"trade,omitempty"`
+	Skills   []string `json:"skills,omitempty"`
+	Area     *string  `json:"area,omitempty"`
+	YearsExp *int     `json:"years_exp,omitempty"`
 }
 
-// Extracted is what the AI pulled out of ONE audio clip (implemented later by the ai package).
+// OnboardAnswer is the AI reading of one spoken answer; nothing is saved.
+type OnboardAnswer struct {
+	Field      string         `json:"field"`
+	Profile    OnboardProfile `json:"profile"`
+	Confidence float64        `json:"confidence"`
+	Transcript string         `json:"transcript"`
+	AudioURL   string         `json:"audio_url"`
+}
+
+// Extracted is the AI's reading of one answer (implemented later by the ai package).
 type Extracted struct {
-	Name            *string
-	Trade           *string
-	TradeConfidence float64
-	Skills          []string
-	YearsExp        *int
-	Area            *string
-	Transcript      string
+	Profile    OnboardProfile
+	Confidence float64
+	Transcript string
 }
 
 type LatLng struct{ Lat, Lng float64 }
@@ -111,7 +116,7 @@ type Deps struct {
 	Stats      func(ctx context.Context, workerIDs []int64) (map[int64]Stats, error)
 	Reviews    func(ctx context.Context, workerID int64) ([]Review, error)
 	PriceRange func(ctx context.Context, trade string) (*PriceRange, error)
-	Extract    func(ctx context.Context, audioPath string) (Extracted, error)
+	Extract    func(ctx context.Context, audioPath, field string) (Extracted, error) // nil => no AI
 }
 
 type Service struct{ d Deps }

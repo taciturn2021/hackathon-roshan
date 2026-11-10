@@ -5,10 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -30,113 +33,129 @@ func wantErr(t *testing.T, err error, status int, code string) {
 	}
 }
 
-func TestMerge(t *testing.T) {
-	full := ProfileDraft{Name: sp("Ali"), Trade: sp("plumber"), TradeConfidence: 0.9, YearsExp: ip(5), Area: sp("F-6"),
-		Skills: []string{"pipes"}, Transcript: "first", IntroAudioURL: "/media/audio/1.webm"}
-
+func TestSanitize(t *testing.T) {
+	long := func(n int) *string { return sp(strings.Repeat("é", n)) }
+	many := make([]string, 30)
+	for i := range many {
+		many[i] = fmt.Sprintf("skill%d", i)
+	}
 	tests := []struct {
 		name string
-		prev ProfileDraft
 		ex   Extracted
-		clip string
-		want func(t *testing.T, d ProfileDraft)
+		want func(t *testing.T, a OnboardAnswer)
 	}{
-		{"first clip fills everything", ProfileDraft{},
-			Extracted{Name: sp("Ali"), Trade: sp("electrician"), TradeConfidence: 0.8, Skills: []string{"wiring"}, YearsExp: ip(3), Area: sp("G-10"), Transcript: "hello"},
-			"/media/audio/a.webm",
-			func(t *testing.T, d ProfileDraft) {
-				if *d.Name != "Ali" || *d.Trade != "electrician" || d.TradeConfidence != 0.8 || *d.YearsExp != 3 || *d.Area != "G-10" {
-					t.Fatalf("bad draft %+v", d)
-				}
-				if d.IntroAudioURL != "/media/audio/a.webm" || d.Transcript != "hello" || len(d.Missing) != 0 {
-					t.Fatalf("bad draft %+v", d)
+		{"trim and blank", Extracted{Profile: OnboardProfile{Name: sp("  Ali "), Area: sp("   ")}, Transcript: " hi "},
+			func(t *testing.T, a OnboardAnswer) {
+				if a.Profile.Name == nil || *a.Profile.Name != "Ali" || a.Profile.Area != nil || a.Transcript != "hi" {
+					t.Fatalf("bad %+v", a)
 				}
 			}},
-		{"follow-up fills only missing", ProfileDraft{Name: sp("Ali"), Trade: sp("plumber"), TradeConfidence: 0.9},
-			Extracted{Name: sp("Other"), Area: sp("F-6"), YearsExp: ip(7)}, "/media/audio/b.webm",
-			func(t *testing.T, d ProfileDraft) {
-				if *d.Name != "Ali" || *d.Area != "F-6" || *d.YearsExp != 7 || len(d.Missing) != 0 {
-					t.Fatalf("bad draft %+v", d)
+		{"name 80 ok, 81 nil", Extracted{Profile: OnboardProfile{Name: long(80)}},
+			func(t *testing.T, a OnboardAnswer) {
+				if a.Profile.Name == nil {
+					t.Fatal("80 runes should pass")
 				}
 			}},
-		{"keeps prev area and years", full, Extracted{Area: sp("X"), YearsExp: ip(1)}, "/media/audio/c.webm",
-			func(t *testing.T, d ProfileDraft) {
-				if *d.Area != "F-6" || *d.YearsExp != 5 {
-					t.Fatalf("bad draft %+v", d)
+		{"name too long", Extracted{Profile: OnboardProfile{Name: long(81)}},
+			func(t *testing.T, a OnboardAnswer) {
+				if a.Profile.Name != nil {
+					t.Fatal("want nil")
 				}
 			}},
-		{"higher confidence replaces trade", ProfileDraft{Trade: sp("plumber"), TradeConfidence: 0.5},
-			Extracted{Trade: sp("electrician"), TradeConfidence: 0.9}, "",
-			func(t *testing.T, d ProfileDraft) {
-				if *d.Trade != "electrician" || d.TradeConfidence != 0.9 {
-					t.Fatalf("bad draft %+v", d)
+		{"area too long", Extracted{Profile: OnboardProfile{Area: long(121)}},
+			func(t *testing.T, a OnboardAnswer) {
+				if a.Profile.Area != nil {
+					t.Fatal("want nil")
 				}
 			}},
-		{"lower confidence does not replace trade", ProfileDraft{Trade: sp("plumber"), TradeConfidence: 0.9},
-			Extracted{Trade: sp("electrician"), TradeConfidence: 0.7}, "",
-			func(t *testing.T, d ProfileDraft) {
-				if *d.Trade != "plumber" || d.TradeConfidence != 0.9 {
-					t.Fatalf("bad draft %+v", d)
+		{"invalid trade", Extracted{Profile: OnboardProfile{Trade: sp("astronaut")}},
+			func(t *testing.T, a OnboardAnswer) {
+				if a.Profile.Trade != nil {
+					t.Fatal("want nil")
 				}
 			}},
-		{"low-confidence trade stays missing", ProfileDraft{},
-			Extracted{Trade: sp("carpenter"), TradeConfidence: 0.4}, "",
-			func(t *testing.T, d ProfileDraft) {
-				if d.Trade == nil || *d.Trade != "carpenter" {
-					t.Fatalf("trade should still be set: %+v", d)
-				}
-				if !reflect.DeepEqual(d.Missing, []string{"name", "trade", "area", "years_exp"}) {
-					t.Fatalf("missing = %v", d.Missing)
+		{"valid trade", Extracted{Profile: OnboardProfile{Trade: sp(" plumber ")}},
+			func(t *testing.T, a OnboardAnswer) {
+				if a.Profile.Trade == nil || *a.Profile.Trade != "plumber" {
+					t.Fatalf("bad %+v", a)
 				}
 			}},
-		{"invalid trade ignored", ProfileDraft{},
-			Extracted{Trade: sp("astronaut"), TradeConfidence: 0.99}, "",
-			func(t *testing.T, d ProfileDraft) {
-				if d.Trade != nil || d.TradeConfidence != 0 {
-					t.Fatalf("bad draft %+v", d)
+		{"years -1", Extracted{Profile: OnboardProfile{YearsExp: ip(-1)}}, func(t *testing.T, a OnboardAnswer) {
+			if a.Profile.YearsExp != nil {
+				t.Fatal("want nil")
+			}
+		}},
+		{"years 81", Extracted{Profile: OnboardProfile{YearsExp: ip(81)}}, func(t *testing.T, a OnboardAnswer) {
+			if a.Profile.YearsExp != nil {
+				t.Fatal("want nil")
+			}
+		}},
+		{"years 0", Extracted{Profile: OnboardProfile{YearsExp: ip(0)}}, func(t *testing.T, a OnboardAnswer) {
+			if a.Profile.YearsExp == nil || *a.Profile.YearsExp != 0 {
+				t.Fatal("want 0")
+			}
+		}},
+		{"years 80", Extracted{Profile: OnboardProfile{YearsExp: ip(80)}}, func(t *testing.T, a OnboardAnswer) {
+			if a.Profile.YearsExp == nil || *a.Profile.YearsExp != 80 {
+				t.Fatal("want 80")
+			}
+		}},
+		{"skills dedupe", Extracted{Profile: OnboardProfile{Skills: []string{"Wiring", " wiring", "", "  ", "Fans", "FANS"}}},
+			func(t *testing.T, a OnboardAnswer) {
+				if !reflect.DeepEqual(a.Profile.Skills, []string{"Wiring", "Fans"}) {
+					t.Fatalf("skills = %v", a.Profile.Skills)
 				}
 			}},
-		{"skills dedupe case-insensitive, trimmed, order kept", ProfileDraft{Skills: []string{"Wiring", " fans "}},
-			Extracted{Skills: []string{"wiring", "", "FANS", "Switches", "  "}}, "",
-			func(t *testing.T, d ProfileDraft) {
-				if !reflect.DeepEqual(d.Skills, []string{"Wiring", "fans", "Switches"}) {
-					t.Fatalf("skills = %v", d.Skills)
-				}
-			}},
-		{"transcript join", ProfileDraft{Transcript: " one "}, Extracted{Transcript: "two "}, "",
-			func(t *testing.T, d ProfileDraft) {
-				if d.Transcript != "one two" {
-					t.Fatalf("transcript = %q", d.Transcript)
-				}
-			}},
-		{"transcript skips empties", ProfileDraft{}, Extracted{Transcript: "two"}, "",
-			func(t *testing.T, d ProfileDraft) {
-				if d.Transcript != "two" {
-					t.Fatalf("transcript = %q", d.Transcript)
-				}
-			}},
-		{"intro url kept", full, Extracted{}, "/media/audio/new.webm",
-			func(t *testing.T, d ProfileDraft) {
-				if d.IntroAudioURL != "/media/audio/1.webm" {
-					t.Fatalf("intro = %q", d.IntroAudioURL)
-				}
-			}},
-		{"empty everything has non-nil slices", ProfileDraft{}, Extracted{}, "",
-			func(t *testing.T, d ProfileDraft) {
-				if d.Skills == nil || d.Missing == nil || len(d.Missing) != 4 {
-					t.Fatalf("bad draft %+v", d)
-				}
-			}},
+		{"skills cap 20", Extracted{Profile: OnboardProfile{Skills: many}}, func(t *testing.T, a OnboardAnswer) {
+			if len(a.Profile.Skills) != 20 || a.Profile.Skills[19] != "skill19" {
+				t.Fatalf("skills = %v", a.Profile.Skills)
+			}
+		}},
+		{"skills all blank is nil", Extracted{Profile: OnboardProfile{Skills: []string{" ", ""}}}, func(t *testing.T, a OnboardAnswer) {
+			if a.Profile.Skills != nil {
+				t.Fatal("want nil")
+			}
+		}},
+		{"confidence NaN", Extracted{Confidence: math.NaN()}, func(t *testing.T, a OnboardAnswer) {
+			if a.Confidence != 0 {
+				t.Fatal(a.Confidence)
+			}
+		}},
+		{"confidence 1.7", Extracted{Confidence: 1.7}, func(t *testing.T, a OnboardAnswer) {
+			if a.Confidence != 1 {
+				t.Fatal(a.Confidence)
+			}
+		}},
+		{"confidence -0.2", Extracted{Confidence: -0.2}, func(t *testing.T, a OnboardAnswer) {
+			if a.Confidence != 0 {
+				t.Fatal(a.Confidence)
+			}
+		}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.want(t, Merge(tc.prev, tc.ex, tc.clip))
+			a := Sanitize("name", tc.ex, "/media/audio/x.webm")
+			if a.Field != "name" || a.AudioURL != "/media/audio/x.webm" {
+				t.Fatalf("field/url not set: %+v", a)
+			}
+			tc.want(t, a)
 		})
 	}
 }
 
-// onboardReq builds a multipart request. audio=false omits the file.
-func onboardReq(t *testing.T, audio bool, draft string) *http.Request {
+func TestSanitizeEmptyProfileJSON(t *testing.T) {
+	b, err := json.Marshal(Sanitize("trade", Extracted{}, "/media/audio/x.webm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"field":"trade","profile":{},"confidence":0,"transcript":"","audio_url":"/media/audio/x.webm"}`
+	if string(b) != want {
+		t.Fatalf("got %s", b)
+	}
+}
+
+// onboardReq builds a multipart request. An empty field or audio=false omits that part.
+func onboardReq(t *testing.T, audio bool, field string) *http.Request {
 	t.Helper()
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
@@ -147,8 +166,8 @@ func onboardReq(t *testing.T, audio bool, draft string) *http.Request {
 		}
 		fw.Write([]byte("fake audio bytes"))
 	}
-	if draft != "" {
-		mw.WriteField("draft", draft)
+	if field != "" {
+		mw.WriteField("field", field)
 	}
 	mw.Close()
 	req := httptest.NewRequest("POST", "/api/workers/onboard", &buf)
@@ -156,62 +175,59 @@ func onboardReq(t *testing.T, audio bool, draft string) *http.Request {
 	return req
 }
 
-func onboardSvc(t *testing.T, extract func(context.Context, string) (Extracted, error)) (*Service, string) {
+func onboardSvc(t *testing.T, extract func(context.Context, string, string) (Extracted, error)) (*Service, string) {
 	t.Helper()
 	dir := t.TempDir()
 	return NewService(Deps{Media: platform.Media{Dir: dir}, Extract: extract}), dir
 }
 
-func TestOnboardMissingAudio(t *testing.T) {
-	s, _ := onboardSvc(t, nil)
-	_, err := s.Onboard(context.Background(), 1, onboardReq(t, false, ""))
-	wantErr(t, err, 400, "bad_request")
+func countFiles(t *testing.T, dir string) int {
+	t.Helper()
+	n := 0
+	filepath.WalkDir(dir, func(_ string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			n++
+		}
+		return nil
+	})
+	return n
 }
 
-func TestOnboardInvalidDraft(t *testing.T) {
-	s, _ := onboardSvc(t, nil)
-	_, err := s.Onboard(context.Background(), 1, onboardReq(t, true, "{not json"))
-	wantErr(t, err, 400, "bad_request")
+func testMux(s *Service, uid int64, role string) *http.ServeMux {
+	mux := http.NewServeMux()
+	id := func(h http.Handler) http.Handler { return h }
+	auth := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(platform.WithPrincipal(r.Context(), platform.Principal{UserID: uid, Role: role})))
+		})
+	}
+	s.Routes(mux, auth, id)
+	return mux
 }
 
-func TestOnboardMerges(t *testing.T) {
-	var gotPath string
-	s, dir := onboardSvc(t, func(_ context.Context, path string) (Extracted, error) {
-		gotPath = path
+func TestOnboardSuccess(t *testing.T) {
+	var gotPath, gotField string
+	s, dir := onboardSvc(t, func(_ context.Context, path, field string) (Extracted, error) {
+		gotPath, gotField = path, field
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("audio not on disk at extract time: %v", err)
 		}
-		return Extracted{Area: sp("G-10"), Trade: sp("electrician"), TradeConfidence: 0.9, Transcript: "second"}, nil
+		return Extracted{Profile: OnboardProfile{Trade: sp("electrician")}, Confidence: 0.9, Transcript: "bijli ka kaam"}, nil
 	})
-	prev, _ := json.Marshal(ProfileDraft{Name: sp("Ali"), Transcript: "first", IntroAudioURL: "/media/audio/old.webm"})
-	d, err := s.Onboard(context.Background(), 1, onboardReq(t, true, string(prev)))
+	a, err := s.Onboard(context.Background(), 1, onboardReq(t, true, "trade"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(gotPath, dir) {
-		t.Fatalf("extract path %q not under media dir %q", gotPath, dir)
+	if gotField != "trade" || !strings.HasPrefix(gotPath, dir) {
+		t.Fatalf("extract got path %q field %q", gotPath, gotField)
 	}
-	if *d.Name != "Ali" || *d.Area != "G-10" || *d.Trade != "electrician" || d.Transcript != "first second" {
-		t.Fatalf("bad draft %+v", d)
+	if a.Field != "trade" || a.Profile.Trade == nil || *a.Profile.Trade != "electrician" || a.Confidence != 0.9 || a.Transcript != "bijli ka kaam" {
+		t.Fatalf("bad answer %+v", a)
 	}
-	if d.IntroAudioURL != "/media/audio/old.webm" {
-		t.Fatalf("intro = %q", d.IntroAudioURL)
+	if !strings.HasPrefix(a.AudioURL, "/media/audio/") {
+		t.Fatalf("audio_url = %q", a.AudioURL)
 	}
-	if !reflect.DeepEqual(d.Missing, []string{"years_exp"}) {
-		t.Fatalf("missing = %v", d.Missing)
-	}
-}
-
-func TestOnboardFirstClipIsIntro(t *testing.T) {
-	s, dir := onboardSvc(t, nil)
-	d, err := s.Onboard(context.Background(), 1, onboardReq(t, true, ""))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.HasPrefix(d.IntroAudioURL, "/media/audio/") {
-		t.Fatalf("intro = %q", d.IntroAudioURL)
-	}
-	p, err := platform.Media{Dir: dir}.Path(d.IntroAudioURL)
+	p, err := platform.Media{Dir: dir}.Path(a.AudioURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,44 +236,63 @@ func TestOnboardFirstClipIsIntro(t *testing.T) {
 	}
 }
 
-func TestOnboardExtractErrorStillReturnsDraft(t *testing.T) {
-	s, _ := onboardSvc(t, func(context.Context, string) (Extracted, error) {
-		return Extracted{Name: sp("ignored")}, errors.New("gateway down")
-	})
-	mux := http.NewServeMux()
-	id := func(h http.Handler) http.Handler { return h }
-	auth := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r.WithContext(platform.WithPrincipal(r.Context(), platform.Principal{UserID: 1, Role: "worker"})))
+func TestOnboardMissingField(t *testing.T) {
+	s, dir := onboardSvc(t, nil)
+	_, err := s.Onboard(context.Background(), 1, onboardReq(t, true, ""))
+	wantErr(t, err, 400, "bad_request")
+	if n := countFiles(t, dir); n != 0 {
+		t.Fatalf("%d files saved", n)
+	}
+}
+
+func TestOnboardInvalidField(t *testing.T) {
+	s, dir := onboardSvc(t, nil)
+	_, err := s.Onboard(context.Background(), 1, onboardReq(t, true, "salary"))
+	wantErr(t, err, 400, "bad_request")
+	if n := countFiles(t, dir); n != 0 {
+		t.Fatalf("%d files saved", n)
+	}
+}
+
+func TestOnboardMissingAudio(t *testing.T) {
+	s, _ := onboardSvc(t, nil)
+	_, err := s.Onboard(context.Background(), 1, onboardReq(t, false, "name"))
+	wantErr(t, err, 400, "bad_request")
+}
+
+func TestOnboardExtractFailureStillAnswers(t *testing.T) {
+	cases := map[string]func(context.Context, string, string) (Extracted, error){
+		"error": func(context.Context, string, string) (Extracted, error) {
+			return Extracted{Profile: OnboardProfile{Name: sp("ignored")}, Confidence: 0.9}, errors.New("gateway down")
+		},
+		"nil": nil,
+	}
+	for name, fn := range cases {
+		t.Run(name, func(t *testing.T) {
+			s, _ := onboardSvc(t, fn)
+			rec := httptest.NewRecorder()
+			testMux(s, 1, "worker").ServeHTTP(rec, onboardReq(t, true, "name"))
+			if rec.Code != 200 {
+				t.Fatalf("status %d: %s", rec.Code, rec.Body)
+			}
+			var a OnboardAnswer
+			if err := json.Unmarshal(rec.Body.Bytes(), &a); err != nil {
+				t.Fatal(err)
+			}
+			if a.Field != "name" || a.Profile.Name != nil || a.Confidence != 0 || a.AudioURL == "" {
+				t.Fatalf("bad answer %+v", a)
+			}
+			if !strings.Contains(rec.Body.String(), `"profile":{}`) {
+				t.Fatalf("profile not empty: %s", rec.Body)
+			}
 		})
-	}
-	s.Routes(mux, auth, id)
-	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, onboardReq(t, true, ""))
-	if rec.Code != 200 {
-		t.Fatalf("status %d: %s", rec.Code, rec.Body)
-	}
-	var d ProfileDraft
-	if err := json.Unmarshal(rec.Body.Bytes(), &d); err != nil {
-		t.Fatal(err)
-	}
-	if d.Name != nil || d.IntroAudioURL == "" || !reflect.DeepEqual(d.Missing, []string{"name", "trade", "area", "years_exp"}) {
-		t.Fatalf("bad draft %+v", d)
 	}
 }
 
 func TestOnboardCustomerForbidden(t *testing.T) {
 	s, _ := onboardSvc(t, nil)
-	mux := http.NewServeMux()
-	id := func(h http.Handler) http.Handler { return h }
-	auth := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r.WithContext(platform.WithPrincipal(r.Context(), platform.Principal{UserID: 2, Role: "customer"})))
-		})
-	}
-	s.Routes(mux, auth, id)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, onboardReq(t, true, ""))
+	testMux(s, 2, "customer").ServeHTTP(rec, onboardReq(t, true, "name"))
 	if rec.Code != 403 {
 		t.Fatalf("status %d", rec.Code)
 	}

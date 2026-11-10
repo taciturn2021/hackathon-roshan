@@ -23,6 +23,9 @@ func TestEnqueue(t *testing.T) {
 	if err := q.Transcribe(ctx, 11); err != nil {
 		t.Fatal(err)
 	}
+	if err := q.Speech(ctx, 44); err != nil {
+		t.Fatal(err)
+	}
 	if err := q.JobBrief(ctx, 22); err != nil {
 		t.Fatal(err)
 	}
@@ -47,11 +50,12 @@ func TestEnqueue(t *testing.T) {
 	}
 	want := map[string]string{
 		TypeTranscribe:    `{"message_id":11}`,
+		TypeMessageSpeech: `{"message_id":44}`,
 		TypeJobBrief:      `{"job_id":22}`,
 		TypeReviewAnalyze: `{"job_id":33}`,
 	}
-	if len(tasks) != 3 {
-		t.Fatalf("pending tasks = %d (%v), want 3", len(tasks), got)
+	if len(tasks) != 4 {
+		t.Fatalf("pending tasks = %d (%v), want 4", len(tasks), got)
 	}
 	for typ, payload := range want {
 		if got[typ] != payload {

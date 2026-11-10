@@ -142,8 +142,20 @@ func TestFullFlow(t *testing.T) {
 	})
 	must(201, st, "create job", obj)
 	jobID := id(obj)
+	if _, ok := obj["brief_ur"]; !ok {
+		t.Fatalf("job JSON is missing brief_ur: %v", obj)
+	}
 	events.expect(t, "job.created")
 	queued("job:brief", fmt.Sprintf(`{"job_id":%d}`, jobID))
+
+	// --- Customer types a message; Urdu text + speech for the worker is queued.
+	st, obj, _ = call("POST", fmt.Sprintf("/api/jobs/%d/messages", jobID), cTok, map[string]any{"kind": "text", "body": "Kab tak pohanch jayen ge?"})
+	must(201, st, "customer text", obj)
+	if _, ok := obj["speech_url"]; !ok || obj["body_ur"] != nil {
+		t.Fatalf("text message shape: %v", obj)
+	}
+	queued("message:speech", fmt.Sprintf(`{"message_id":%d}`, id(obj)))
+	events.expect(t, "message.created")
 
 	// --- Worker replies with a voice note; its transcript is queued for the AI worker.
 	voice := newMultipart(nil)
@@ -196,7 +208,7 @@ func TestFullFlow(t *testing.T) {
 	}
 	st, obj, _ = call("GET", fmt.Sprintf("/api/jobs/%d", jobID), cTok, nil)
 	must(200, st, "job detail", obj)
-	if obj["job"].(map[string]any)["reviewed"] != true || len(obj["messages"].([]any)) != 2 {
+	if obj["job"].(map[string]any)["reviewed"] != true || len(obj["messages"].([]any)) != 3 {
 		t.Fatalf("job detail: %v", obj)
 	}
 	st, obj, _ = call("GET", "/api/me", wTok, nil)

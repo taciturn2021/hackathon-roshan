@@ -6,7 +6,8 @@
 // WebSocket update:
 //
 //	TypeTranscribe     → speech-to-text, Jev "contains a price?", LLM price extraction → jobs.SetTranscript
-//	TypeJobBrief       → Urdu text-to-speech of the job summary                       → jobs.SetBriefAudio
+//	TypeMessageSpeech  → a customer's typed message rewritten in Urdu (LLM) + TTS     → jobs.SetMessageSpeech
+//	TypeJobBrief       → short Urdu job summary (LLM) + its text-to-speech            → jobs.SetBrief
 //	TypeReviewAnalyze  → transcript of a voice review, Jev review tags                → reviews.SetTags,
 //	                     then a new trust summary from the worker's reviews            → workers.SetTrustSummary
 package queue
@@ -24,6 +25,7 @@ import (
 // Task types.
 const (
 	TypeTranscribe    = "message:transcribe" // payload MessagePayload: a voice message in job chat
+	TypeMessageSpeech = "message:speech"     // payload MessagePayload: a customer's typed message, for the worker to hear
 	TypeJobBrief      = "job:brief"          // payload JobPayload: a newly created job
 	TypeReviewAnalyze = "review:analyze"     // payload JobPayload: the job whose review was just saved
 )
@@ -73,7 +75,12 @@ func (q *Client) Transcribe(ctx context.Context, messageID int64) error {
 	return q.enqueue(ctx, TypeTranscribe, messageID, MessagePayload{messageID})
 }
 
-// JobBrief queues the Urdu read-aloud summary of a new job for the worker.
+// Speech queues Urdu text and speech of a customer's typed message, so the worker can listen to it.
+func (q *Client) Speech(ctx context.Context, messageID int64) error {
+	return q.enqueue(ctx, TypeMessageSpeech, messageID, MessagePayload{messageID})
+}
+
+// JobBrief queues the short Urdu summary (text + speech) of a new job for the worker.
 func (q *Client) JobBrief(ctx context.Context, jobID int64) error {
 	return q.enqueue(ctx, TypeJobBrief, jobID, JobPayload{jobID})
 }
