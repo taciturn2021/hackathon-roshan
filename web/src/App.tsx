@@ -13,7 +13,7 @@ import { CancelJob, Chat, JobStatus, MakeOffer, ReviewJob } from './screens/Job'
 import { Jobs } from './screens/Jobs'
 import { Landing } from './screens/Landing'
 import { Onboard, WorkerConfirm, WorkerLocation } from './screens/Onboarding'
-import { OwnProfile, WorkerProfile } from './screens/Profile'
+import { EditProfile, OwnProfile, WorkerProfile } from './screens/Profile'
 
 type Params = Record<string, string>
 type Route = { path: string; title: string; ur?: string; page: (p: Params) => ReactNode }
@@ -43,6 +43,7 @@ const APP: Route[] = [
   { path: '/app/jobs/:id/cancel', title: 'Cancel job', ur: 'منسوخ', page: (p) => <CancelJob id={Number(p.id)} /> },
   { path: '/app/jobs/:id/review', title: 'Leave a review', ur: 'ریویو دیں', page: (p) => <ReviewJob id={Number(p.id)} /> },
   { path: '/app/profile', title: 'Profile', ur: 'پروفائل', page: () => <OwnProfile /> },
+  { path: '/app/profile/edit', title: 'Edit profile', ur: 'پروفائل بدلیں', page: () => <EditProfile /> },
 ]
 
 /** Old addresses, kept so saved links still work. */

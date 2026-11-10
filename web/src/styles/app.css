@@ -421,3 +421,69 @@ html[lang=ur] .desktop-links a,html[lang=ur] .header-pill{font:500 17px/2 var(--
 html[lang=ur] .footer-grid h3{font:600 16px/2 var(--font-urdu);letter-spacing:0}
 html[lang=ur] .footer-grid p,html[lang=ur] .footer-grid>div>a:not(.brand),html[lang=ur] .footer-bottom{font:500 17px/2 var(--font-urdu);letter-spacing:0}
 @media(min-width:960px){.footer-wrap{padding:0 24px 24px}.site-footer{padding:64px 24px 0}}
+
+/* ---------- The app and task screens in the landing page's visual language ---------- */
+/* Same ink, sage and lime, white page, mono labels and buttons, and rounded inset panels. */
+:root{
+  --ink:#102A1B;--lime:#C8F169;--sage:#EAF6E3;
+  --background:#FFFFFF;--raised:#F6FAF2;--muted:#F3F8EE;
+  --accent:var(--sage);--accent-border:#CFE6C2;--accent-foreground:var(--ink);
+  --sidebar-deep:var(--ink);--ring-on-deep:var(--lime);
+  --border:#DCE7D6;--input:#9DB3A3;--ring:var(--ink);
+}
+body{background:var(--background)}
+.app-main,.task-panel,.site-container{overflow-wrap:break-word}
+
+/* Buttons: ink, mono, upper case. Text wraps inside the button on narrow screens instead of spilling out. */
+.button{min-height:52px;height:auto;min-width:0;padding:12px 18px;border-radius:10px;background:var(--ink);border-color:var(--ink);color:#fff;font:600 13px/1.35 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;white-space:normal;text-align:center}
+.button svg{flex-shrink:0}
+.button:not(.outline,.ghost,.danger,.destructive-outline,.link):hover{background-color:#1D4130}
+.button.outline{background:transparent;color:var(--ink);border-color:var(--ink)}
+.button.outline:hover{filter:none;background:rgb(16 42 27 / .06)}
+.button.ghost{background:transparent;border-color:transparent;color:var(--muted-foreground)}
+.button.danger{background:var(--destructive);border-color:var(--destructive);color:#fff}
+.button.destructive-outline{background:transparent;color:var(--destructive-text);border-color:var(--destructive-text)}
+.button.link{background:none;border-color:transparent;color:var(--link);font:500 15px/1.4 var(--font-sans);letter-spacing:0;text-transform:none}
+.button:disabled,.button.disabled{background:#E7ECE4;border-color:#E7ECE4;color:#74857A}
+html[lang=ur] .button,.worker .button{font:600 18px/1.9 var(--font-urdu);letter-spacing:0;text-transform:none}
+.website .button{min-height:52px}
+.icon-button{border-radius:10px;border-color:rgb(16 42 27 / .28)}
+.segment .button{min-height:44px;padding:8px 10px;font-size:12px}
+.segment .selected{background:var(--ink);color:#fff;border-color:var(--ink)}
+.segment .selected .count{color:var(--lime)}
+.app-action{min-height:44px}
+
+/* Labels: small upper-case mono, as on the landing page. */
+.tile-label,.data-table th,.badge,.eyebrow,.step-rail li,.flow-steps li{font-family:var(--font-mono);letter-spacing:.07em;text-transform:uppercase}
+.tile-label{font-size:11px;font-weight:500}
+.data-table th{font-size:11px}
+.badge{font-size:11px;font-weight:600;border-radius:6px}
+.step-rail li,.flow-steps li{font-size:10.5px;letter-spacing:.05em}
+html[lang=ur] :is(.tile-label,.data-table th,.badge,.eyebrow,.step-rail li,.flow-steps li){font-family:var(--font-urdu);font-size:15px;line-height:1.9;letter-spacing:0}
+
+/* Surfaces */
+.card,.panel,.tile,.worker-link,.profile-strip,.trade-tile,.role-tile{border-radius:16px;border-color:var(--border)}
+.task-panel{border-radius:24px}
+.promptbar{background:var(--sage)}
+.tile.accent{background:var(--ink);border-color:var(--ink)}
+.tile.accent .tile-value{color:var(--lime)}
+.tile-value{white-space:normal;font-size:clamp(20px,6vw,28px);letter-spacing:-.02em}
+.empty-panel{background:var(--sage);border:1px dashed rgb(16 42 27 / .35);border-radius:20px}
+.worker-link:hover,.quick-trade:hover,.tile:hover{border-color:var(--ink)}
+.trade-tile.selected{border-color:var(--ink);background:var(--sage)}
+.role-tile.worker-role{background:var(--sage);border-color:var(--accent-border)}
+.step-rail li[aria-current]>span{background:var(--ink);border-color:var(--ink);color:var(--lime)}
+.flow-steps li.done>span{background:var(--ink);border-color:var(--ink);color:var(--lime)}
+.hero-card{border-width:1px;border-radius:20px}
+.hero-card.go{background:var(--sage);border-color:var(--ink);color:var(--ink)}
+.hero-card.done{background:var(--ink);border-color:var(--ink);color:#fff}
+.hero-card.done .hero-icon{background:var(--lime);color:var(--ink)}
+
+/* Headings and bars */
+.app-topbar{background:#fff;border-bottom:1px solid transparent}
+.app-topbar h1,.section-heading h1,.panel-head h2,.hero-card h1,.profile-strip h2{letter-spacing:-.02em;font-weight:600}
+.app-nav a{font:500 14px/1 var(--font-mono)}
+.app-nav a[aria-current=page]{background:rgb(255 255 255 / .09);color:#fff}
+.field :is(input,textarea),input.digits{border-radius:10px}
+/* Filter tabs: two per row on a phone so their labels are never cut off. */
+@media(max-width:520px){.segment .button{flex:1 1 calc(50% - 4px)}}

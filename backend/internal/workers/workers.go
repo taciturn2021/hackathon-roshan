@@ -161,6 +161,7 @@ func (in *ProfileInput) validate() error {
 }
 
 // SaveProfile creates or updates the worker's profile. is_online and trust_summary are left untouched.
+// On an update, empty skills, a missing location (0,0) and a null intro_audio_url keep the stored values.
 func (s *Service) SaveProfile(ctx context.Context, userID int64, in ProfileInput) (WorkerCard, error) {
 	if err := in.validate(); err != nil {
 		return WorkerCard{}, err
@@ -169,9 +170,14 @@ func (s *Service) SaveProfile(ctx context.Context, userID int64, in ProfileInput
 		INSERT INTO worker_profiles (user_id, trade, skills, years_exp, area, lat, lng, intro_audio_url)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (user_id) DO UPDATE SET
-			trade = EXCLUDED.trade, skills = EXCLUDED.skills, years_exp = EXCLUDED.years_exp,
-			area = EXCLUDED.area, lat = EXCLUDED.lat, lng = EXCLUDED.lng,
-			intro_audio_url = EXCLUDED.intro_audio_url`,
+			trade = EXCLUDED.trade, years_exp = EXCLUDED.years_exp, area = EXCLUDED.area,
+			-- An edit that leaves these out keeps what is stored: the profile editor sends only name,
+			-- trade, area and years, and must not erase the worker's location, skills or introduction.
+			skills = CASE WHEN cardinality(EXCLUDED.skills) = 0 THEN worker_profiles.skills ELSE EXCLUDED.skills END,
+			-- A missing location arrives as 0,0 (JSON null into a float), which is open sea, never a worker.
+			lat = CASE WHEN EXCLUDED.lat = 0 AND EXCLUDED.lng = 0 THEN worker_profiles.lat ELSE EXCLUDED.lat END,
+			lng = CASE WHEN EXCLUDED.lat = 0 AND EXCLUDED.lng = 0 THEN worker_profiles.lng ELSE EXCLUDED.lng END,
+			intro_audio_url = COALESCE(EXCLUDED.intro_audio_url, worker_profiles.intro_audio_url)`,
 		userID, in.Trade, in.Skills, in.YearsExp, in.Area, in.Lat, in.Lng, in.IntroAudioURL)
 	if err != nil {
 		return WorkerCard{}, fmt.Errorf("save profile: %w", err)

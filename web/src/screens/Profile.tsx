@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Icon } from '../components/Icon'
 import { Task } from '../components/Task'
-import { Alert, AudioMessage, Badge, Skeletons, StatePanel, StatTiles } from '../components/ui'
+import { Alert, AudioMessage, Badge, Skeletons, StatePanel, StatTiles, TradeGrid } from '../components/ui'
+import type { Trade } from '../contract'
 import { api, isWorkerBusy } from '../lib/api'
 import { play, toast } from '../lib/audio'
 import { problemDraft } from '../lib/draft'
 import { useT } from '../lib/i18n'
 import { Link, navigate } from '../lib/router'
-import { useLoad, useRole } from '../lib/session'
+import { errorText } from '../lib/errors'
+import { setMe, useLoad, useRole } from '../lib/session'
 import { initials, km, rupees, TAGS, TAGS_UR, TRADES } from '../lib/trades'
 
 export function WorkerProfile({ id }: { id: number }) {
@@ -131,6 +133,7 @@ export function OwnProfile() {
         </div>
         {w.intro_audio_url && <AudioMessage url={w.intro_audio_url} ur />}
       </div>
+      <Link className="button outline full" href="/app/profile/edit"><Icon name="Pencil" />{t('Edit profile', 'پروفائل بدلیں')}</Link>
       <StatTiles tiles={[
         { label: t('Rating', 'ریٹنگ'), value: w.rating_avg?.toFixed(1) ?? '—', icon: 'Star', accent: true },
         { label: t('Jobs done', 'مکمل کام'), value: String(w.jobs_done), icon: 'CircleCheck' },
@@ -154,6 +157,79 @@ export function OwnProfile() {
           {w.price_range && <p className="muted">{t(`Typical ${tr.en} job:`, `${tr.ur} کے کام کی عام قیمت:`)} <span className="digits">{rupees(w.price_range.low)}–{w.price_range.high.toLocaleString('en-PK')}</span></p>}
         </section>
       </div>
+    </Task>
+  )
+}
+
+/**
+ * The worker corrects what the voice sign-up got wrong: name, trade, area and years.
+ * The phone number and email the account was made with are shown but cannot be changed.
+ */
+export function EditProfile() {
+  const t = useT()
+  const me = useRole('worker')
+  const had = me?.worker
+  const [name, setName] = useState(had?.name ?? '')
+  const [trade, setTrade] = useState<Trade | null>(had?.trade ?? null)
+  const [area, setArea] = useState(had?.area ?? '')
+  const [years, setYears] = useState(had?.years_exp != null ? String(had.years_exp) : '')
+  const [state, setState] = useState<'idle' | 'saving' | 'error'>('idle')
+  const [why, setWhy] = useState<unknown>(null)
+  if (!me || !had) return null
+
+  const nameOk = name.trim().length > 0 && name.trim().length <= 80
+  const yearsOk = years === '' || (/^\d{1,2}$/.test(years) && Number(years) <= 70)
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    if (!nameOk || !yearsOk || !trade) return
+    setState('saving')
+    try {
+      // Location, skills and the spoken introduction are not edited here: the API keeps the stored ones.
+      const worker = await api.saveWorker({
+        name: name.trim(), trade, skills: [], years_exp: years === '' ? null : Number(years), area: area.trim() || null,
+        lat: null, lng: null, intro_audio_url: null,
+      })
+      setMe({ ...me!, worker })
+      toast(t('Profile updated', 'پروفائل بدل گیا'))
+      navigate('/app/profile')
+    } catch (err) {
+      setWhy(err)
+      setState('error')
+    }
+  }
+
+  return (
+    <Task screen="worker-profile-edit" worker wide>
+      <form className="stack" onSubmit={save} noValidate>
+        {state === 'error' && <Alert tone="error" title={t('Not saved', 'محفوظ نہیں ہوا')} text={errorText(why, t)} />}
+        <label className="field" htmlFor="pf-name">{t('Name', 'نام')}
+          <input id="pf-name" dir="auto" autoComplete="name" maxLength={80} value={name} aria-invalid={!nameOk}
+            aria-describedby={nameOk ? undefined : 'pf-name-error'} onChange={(e) => setName(e.target.value)} />
+          {!nameOk && <span className="field-error" id="pf-name-error">{t('Write your name (up to 80 letters).', 'اپنا نام لکھیں (زیادہ سے زیادہ 80 حروف)۔')}</span>}
+        </label>
+        <div className="stack-sm">
+          <span className="field">{t('Your work', 'آپ کا کام')}</span>
+          <TradeGrid selected={trade} onPick={setTrade} />
+        </div>
+        <label className="field" htmlFor="pf-area">{t('Area you work in', 'کس علاقے میں کام کرتے ہیں')}
+          <input id="pf-area" dir="auto" maxLength={80} placeholder="G-10" value={area} onChange={(e) => setArea(e.target.value)} />
+        </label>
+        <label className="field" htmlFor="pf-years">{t('Years of experience', 'کتنے سال کا تجربہ')}
+          <input id="pf-years" className="digits" dir="ltr" type="text" inputMode="numeric" maxLength={2} value={years} aria-invalid={!yearsOk}
+            aria-describedby={yearsOk ? undefined : 'pf-years-error'} onChange={(e) => setYears(e.target.value.replace(/\D/g, ''))} />
+          {!yearsOk && <span className="field-error" id="pf-years-error">{t('Write a number from 0 to 70.', '0 سے 70 تک کوئی نمبر لکھیں۔')}</span>}
+        </label>
+        <section className="card card-soft">
+          <p className="row"><Icon name="LockKeyhole" /><strong>{t('Cannot be changed', 'یہ نہیں بدل سکتے')}</strong></p>
+          {me.user.phone && <p className="icon-detail"><Icon name="User" /><span>{t('Phone', 'فون')}</span><span className="digits" dir="ltr">{me.user.phone}</span></p>}
+          {me.user.email && <p className="icon-detail"><Icon name="Mail" /><span>{t('Email', 'ای میل')}</span><span dir="ltr">{me.user.email}</span></p>}
+          <p className="note">{t('Your account was made with these, so they stay the same.', 'آپ کا اکاؤنٹ انہی سے بنا ہے، اس لیے یہ وہی رہتے ہیں۔')}</p>
+        </section>
+        <button className="button full" type="submit" disabled={state === 'saving' || !nameOk || !yearsOk || !trade}>
+          <Icon name={state === 'saving' ? 'LoaderCircle' : 'Check'} />{t('Save changes', 'محفوظ کریں')}
+        </button>
+        <Link className="button outline full" href="/worker/onboard"><Icon name="Mic" />{t('Answer the questions again by voice', 'سوالوں کے جواب دوبارہ بول کر دیں')}</Link>
+      </form>
     </Task>
   )
 }
