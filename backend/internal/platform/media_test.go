@@ -8,6 +8,7 @@ import (
 	"net/textproto"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -91,5 +92,26 @@ func TestMediaPathReject(t *testing.T) {
 		if _, err := m.Path(u); err == nil {
 			t.Errorf("%q: want error", u)
 		}
+	}
+}
+
+func TestSaveBytes(t *testing.T) {
+	m := Media{Dir: t.TempDir()}
+	url, err := m.SaveBytes("audio", ".mp3", []byte("ID3"))
+	if err != nil || !strings.HasPrefix(url, "/media/audio/") || !strings.HasSuffix(url, ".mp3") {
+		t.Fatalf("SaveBytes = %q, %v", url, err)
+	}
+	p, err := m.Path(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, err := os.ReadFile(p); err != nil || string(b) != "ID3" {
+		t.Fatalf("file = %q, %v", b, err)
+	}
+	if _, err := m.SaveBytes("audio", ".exe", nil); err == nil {
+		t.Fatal(".exe accepted")
+	}
+	if _, err := m.SaveBytes("video", ".mp4", nil); err == nil {
+		t.Fatal("unknown kind accepted")
 	}
 }

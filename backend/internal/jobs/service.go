@@ -556,3 +556,15 @@ func (s *Service) SetTranscript(ctx context.Context, messageID int64, body strin
 	s.publish(ctx, parties(row), realtime.Event{Type: "message.updated", Data: msg})
 	return nil
 }
+
+// JobRow returns a job without a party check. For the queue (internal/tasks), never for HTTP handlers.
+func (s *Service) JobRow(ctx context.Context, jobID int64) (Row, error) { return s.loadRow(ctx, jobID) }
+
+// MessageByID returns a message without a party check. For the queue (internal/tasks), never for HTTP handlers.
+func (s *Service) MessageByID(ctx context.Context, messageID int64) (Message, error) {
+	m, err := scanMessage(s.d.DB.QueryRow(ctx, `SELECT `+msgCols+` FROM messages WHERE id = $1`, messageID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Message{}, platform.ErrNotFound
+	}
+	return m, err
+}

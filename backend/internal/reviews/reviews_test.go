@@ -343,3 +343,16 @@ func TestSetTags(t *testing.T) {
 		t.Fatalf("err = %v, want not found", err)
 	}
 }
+
+func TestByJob(t *testing.T) {
+	e := newEnv(t)
+	w := e.user(t, "worker")
+	jid := e.review(t, w, 4, "polite")
+	rv, err := e.svc.ByJob(context.Background(), jid)
+	if err != nil || rv.Rating != 4 || len(rv.Tags) != 1 || rv.Tags[0] != "polite" {
+		t.Fatalf("ByJob = %+v, %v", rv, err)
+	}
+	if _, err := e.svc.ByJob(context.Background(), 999999); err != platform.ErrNotFound {
+		t.Fatalf("missing: %v", err)
+	}
+}

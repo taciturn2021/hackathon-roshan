@@ -254,6 +254,18 @@ func (s *Service) ForWorker(ctx context.Context, workerID int64) ([]workers.Revi
 	return out, rows.Err()
 }
 
+// ByJob returns the review of a job, or ErrNotFound. For the queue (internal/tasks).
+func (s *Service) ByJob(ctx context.Context, jobID int64) (workers.Review, error) {
+	var rv workers.Review
+	err := s.d.DB.QueryRow(ctx, `SELECT job_id, rating, body, audio_url, tags, created_at FROM reviews WHERE job_id = $1`, jobID).
+		Scan(&rv.JobID, &rv.Rating, &rv.Body, &rv.AudioURL, &rv.Tags, &rv.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return workers.Review{}, platform.ErrNotFound
+	}
+	rv.Tags = nonNil(rv.Tags)
+	return rv, err
+}
+
 // Reviewed reports which of the jobs have a review.
 func (s *Service) Reviewed(ctx context.Context, jobIDs []int64) (map[int64]bool, error) {
 	out := map[int64]bool{}

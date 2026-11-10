@@ -803,3 +803,28 @@ func TestBuildMissingWorkerCard(t *testing.T) {
 		t.Fatalf("job %+v err %v", job.Worker, err)
 	}
 }
+
+func TestQueueAccessors(t *testing.T) {
+	e := newEnv(t, nil)
+	ctx := context.Background()
+	w, c := e.worker(), e.customer()
+	job := mkJob(t, e.db, c, w)
+	m, err := e.svc.PostText(ctx, job, c, "salam")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err := e.svc.JobRow(ctx, job)
+	if err != nil || row.ID != job || row.WorkerID != w || row.Description == "" {
+		t.Fatalf("JobRow = %+v, %v", row, err)
+	}
+	got, err := e.svc.MessageByID(ctx, m.ID)
+	if err != nil || got.Body == nil || *got.Body != "salam" || got.JobID != job {
+		t.Fatalf("MessageByID = %+v, %v", got, err)
+	}
+	if _, err := e.svc.JobRow(ctx, 999999); err != platform.ErrNotFound {
+		t.Fatalf("missing job: %v", err)
+	}
+	if _, err := e.svc.MessageByID(ctx, 999999); err != platform.ErrNotFound {
+		t.Fatalf("missing message: %v", err)
+	}
+}

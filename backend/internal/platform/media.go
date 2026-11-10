@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -88,6 +89,28 @@ func (m Media) Save(r *http.Request, field, kind string) (string, error) {
 		return "", err
 	}
 	if err := out.Close(); err != nil {
+		return "", err
+	}
+	return "/media/" + kind + "/" + name, nil
+}
+
+// SaveBytes stores generated media (e.g. text-to-speech audio from the queue) and returns its public URL.
+// ext must be in the allowlist for kind (".mp3", ".wav", ... for audio).
+func (m Media) SaveBytes(kind, ext string, data []byte) (string, error) {
+	allow, ok := allowedExt[kind]
+	if !ok || !allow[ext] {
+		return "", fmt.Errorf("media: %q not allowed for %s", ext, kind)
+	}
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	name := hex.EncodeToString(buf) + ext
+	dir := filepath.Join(m.Dir, kind)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
 		return "", err
 	}
 	return "/media/" + kind + "/" + name, nil
