@@ -9,3 +9,10 @@ firebase-service-account.json
 *service-account*.json
 INFRASTRUCTURE.md
 DEV_ACCESS.md
+/tmp/
+/.playwright-mcp/
+CLAUDE.md
+_archive
+# Local notes and tooling, not needed for integration
+progress.md
+.claude/

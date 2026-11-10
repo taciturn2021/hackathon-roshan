@@ -36,11 +36,23 @@ Planning documents are in [`docs/`](docs/).
 
 All through Vercel AI Gateway: _to be completed with the final models and the speech-to-text comparison table._
 
-AI coding assistants used: _to be completed._
+AI coding assistants used: OpenAI Codex for the static design package and its validation. The cover illustration was produced with the built-in image generation tool; its prompt and use are documented in `_archive/design-reference/HANDOFF.md`.
+
+## Design preview and Figma import
+
+The design package is in [`_archive/design-reference/`](_archive/design-reference/index.html). It includes 27 role-specific screens, 334 desktop/mobile state frames, an original cover, light/dark theme tokens, component specimens and flows.
+
+```bash
+python -m http.server 4173 --bind 127.0.0.1 --directory _archive/design-reference
+```
+
+Open http://127.0.0.1:4173/gallery.html for the visual gallery or `/index.html` for every state. See [`_archive/design-reference/IMPORT-GUIDE.html`](_archive/design-reference/IMPORT-GUIDE.html) for html.to.design import and [`_archive/design-reference/CHECKLIST.md`](_archive/design-reference/CHECKLIST.md) for the full frame checklist. The package is static and has not been uploaded to Figma; the React frontend remains the original skeleton.
+
+Design references and library credits: [`_archive/design-reference/RESEARCH.md`](_archive/design-reference/RESEARCH.md) and [`_archive/design-reference/HANDOFF.md`](_archive/design-reference/HANDOFF.md). Icons use Lucide (ISC); typography uses Google Fonts; component conventions follow shadcn/ui, Radix and Tailwind. Thinking Gods/Fernroot and tweakcn Nature informed presentation. The separate Liquid Buttons demo is MIT-licensed; its Three.js animation is not bundled into the application.
 
 ## Seeded and mocked
 
-_To be completed._ Planned: seeded workers, jobs and reviews.
+The design package uses fictional worker identities, ratings, job counts, prices and review text. It makes no live bookings and does not authenticate or record audio. These fixtures are not database seeds. Planned backend work remains: seeded workers, jobs and reviews.
 
 ## Known limitations
 
