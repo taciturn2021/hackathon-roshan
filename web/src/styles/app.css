@@ -555,3 +555,36 @@ html[lang=ur] :is(.tile-label,.data-table th,.badge,.eyebrow,.step-rail li,.flow
 .map-picker .leaflet-control-zoom a{width:40px;height:40px;line-height:40px;font-size:20px;color:var(--ink)}
 .map-picker .leaflet-control-attribution{font:11px/1.4 var(--font-sans)}
 @media(min-width:960px){.map-picker{height:460px}}
+
+/* Role doors: who is signing in. Picture, Urdu and English always appear together (whatever the language
+   setting), so a worker who cannot read English still finds the wrench. Workers: green fill and a wrench;
+   customers: dark fill and a house. */
+.role-words{display:flex;flex-direction:column;text-align:left}
+html[dir=rtl] .role-words{text-align:right}
+.role-words .role-en{font:600 14px/1.25 var(--font-sans)}
+.role-words .role-ur{font:400 14px/1.8 var(--font-urdu)}
+.role-doors{display:none;gap:8px;align-items:center}
+@media(min-width:640px){.role-doors{display:flex}}
+.role-door{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:2px 14px;border-radius:8px;border:1px solid transparent;text-decoration:none;white-space:nowrap}
+.role-door .icon{width:20px;height:20px;flex-shrink:0}
+.role-door.customer-role{background:var(--ink, var(--foreground));color:#fff}
+.role-door.worker-role{background:var(--accent);border-color:var(--accent-border);color:var(--accent-foreground)}
+.role-doors.big{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin:8px 0 24px}
+.role-doors.big .role-door{min-height:72px;padding:12px 18px;border-radius:12px}
+.role-doors.big .icon{width:28px;height:28px}
+.role-doors.big .role-en{font-size:18px}
+.role-doors.big .role-ur{font-size:18px}
+/* The role picker's tiles */
+.role-tile .role-words .role-ur{font:600 30px/1.8 var(--font-urdu);color:var(--foreground)}
+.role-tile .role-words .role-en{font:600 20px/1.3 var(--font-sans);color:var(--foreground)}
+.role-tile.customer-role .icon-lg{color:var(--foreground)}
+/* The banner at the top of each sign-in page, and the link to the other one at the bottom */
+.role-banner{display:flex;align-items:center;gap:14px;padding:12px 18px;border-radius:12px;border:1px solid var(--border);background:var(--card)}
+.role-banner.worker-role{background:var(--accent);border-color:var(--accent-border);color:var(--accent-foreground)}
+.role-banner .icon{width:32px;height:32px;flex-shrink:0}
+.role-banner .role-en{font-size:16px}
+.role-banner .role-ur{font-size:18px}
+.other-door{display:flex;align-items:center;gap:14px;min-height:64px;padding:12px 18px;border-radius:12px;border:1px dashed var(--input);color:var(--foreground);text-decoration:none}
+.other-door:hover{background:var(--muted)}
+.other-door .icon{width:28px;height:28px;flex-shrink:0;color:var(--primary)}
+@media(max-width:479px){.role-tile .role-words .role-ur{font-size:24px}.role-tile .role-words .role-en{font-size:18px}}

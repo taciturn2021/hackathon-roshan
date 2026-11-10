@@ -47,7 +47,7 @@ const APP: Route[] = [
 ]
 
 /** Old addresses, kept so saved links still work. */
-const MOVED: Record<string, string> = { '/signin': '/login', '/worker/signin': '/worker/login', '/worker': '/app', '/find': '/app/find', '/jobs': '/app/jobs' }
+const MOVED: Record<string, string> = { '/signin': '/login', '/worker/signin': '/worker/login', '/worker': '/worker/login', '/find': '/app/find', '/jobs': '/app/jobs' }
 /** Signed-in visitors skip these and go straight to the app. */
 const SIGNED_OUT_ONLY = ['/', '/login', '/signup', '/worker/login', '/start']
 

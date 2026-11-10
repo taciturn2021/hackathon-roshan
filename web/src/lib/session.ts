@@ -24,11 +24,15 @@ window.addEventListener('rr:signed-out', () => { if (me) set(null) })
 /** True when sign-in screens skip Firebase: the mock backend, or dev tokens against a local API. */
 export const FAKE_AUTH = MOCK || !!DEV
 
-/** Opens the API session. Call it after every Firebase sign-in (the API creates the user on first call). */
-export async function signIn(role: User['role']) {
+/**
+ * Opens the API session. Call it after every Firebase sign-in (the API creates the user on first call).
+ * keep=false returns the account without storing it, so a sign-in page can check the role first:
+ * storing it sends the visitor straight on, because signed-in visitors skip the sign-in pages.
+ */
+export async function signIn(role: User['role'], keep = true) {
   if (DEV) setDevUser(role)
   const next = await api.session(role)
-  set(next)
+  if (keep) set(next)
   return next
 }
 
