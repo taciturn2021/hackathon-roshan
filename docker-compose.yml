@@ -1,0 +1,81 @@
+# One command: docker compose up --build
+# web http://localhost:5173 · api http://localhost:8080 · queue dashboard http://localhost:8081
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: roshan
+      POSTGRES_PASSWORD: roshan # local development only
+      POSTGRES_DB: roshan
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs only when the pgdata volume is empty. After a schema change: docker compose down -v
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roshan"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  api: &backend
+    build: ./backend
+    image: roshan-backend
+    command: ["api"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://roshan:roshan@postgres:5432/roshan
+      REDIS_ADDR: redis:6379
+      MEDIA_DIR: /media
+    volumes:
+      - media:/media
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+    ports: []
+
+  asynqmon:
+    image: hibiken/asynqmon
+    platform: linux/amd64 # no arm64 image is published; runs emulated on Apple Silicon
+    command: ["--redis-addr=redis:6379"]
+    ports:
+      - "8081:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  web:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      API_TARGET: http://api:8080
+    volumes:
+      - ./web:/app
+      - web_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  media:
+  web_modules:
