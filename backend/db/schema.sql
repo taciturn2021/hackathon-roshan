@@ -37,7 +37,8 @@ CREATE TABLE jobs (
   status       TEXT NOT NULL DEFAULT 'requested'
                CHECK (status IN ('requested','confirmed','in_progress','completed','cancelled')),
   agreed_price INT,
-  brief_audio_url TEXT,          -- Urdu audio summary for the worker, filled by the queue
+  brief_ur        TEXT,          -- short Urdu summary for the worker, filled by the queue
+  brief_audio_url TEXT,          -- its audio, played when the worker taps the speaker
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at TIMESTAMPTZ
 );
@@ -53,6 +54,8 @@ CREATE TABLE messages (
   kind            TEXT NOT NULL CHECK (kind IN ('text','voice','offer')),
   body            TEXT,          -- text, or transcript once the queue fills it
   audio_url       TEXT,
+  body_ur         TEXT,          -- typed text rewritten in Urdu script, filled by the queue
+  speech_url      TEXT,          -- its audio, so the worker can listen to a typed message
   suggested_price INT,           -- price heard in a voice note; sender taps to turn it into an offer
   offer_price     INT,
   offer_status    TEXT CHECK (offer_status IN ('pending','accepted','rejected')),

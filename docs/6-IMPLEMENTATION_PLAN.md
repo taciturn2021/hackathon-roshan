@@ -15,7 +15,7 @@ web/                                                 → Abdul Muizz
 |---|---|---|---|---|
 | now → 12:00 | Firebase project setup, schema, sqlc, `platform`, `identity` (verify Firebase token) | **Figma: 10 frames** | STT test A vs B (5 Urdu clips), confirm gateway access, then help on Figma | Public repo, compose skeleton, CI, branch protection |
 | 12:00 → 13:15 | `workers` (onboard, search, profile) | Screens 1–5 against mocked API | `ai` package, onboarding extraction, seed ~40 workers + jobs + reviews | First green `docker compose up`; double-booking race test |
-| 13:15 → 14:30 | `jobs`, messages, offers, WebSocket hub, `reviews` | Screens 6–10, wire real API + WebSocket | Queue handlers, Jev decisions, record Urdu prompts, then job read-aloud | Merge continuously; end-to-end happy-path test |
+| 13:15 → 14:30 | `jobs`, messages, offers, WebSocket hub, `reviews` | Screens 6–10, wire real API + WebSocket | Queue handlers, Jev decisions, record Urdu prompts, then Urdu speech for job summaries and typed messages | Merge continuously; end-to-end happy-path test |
 | 14:30 → 15:00 | Bug fixes only | Bug fixes only | README | Clean-clone run; HTTPS tunnel for phone demo |
 | 15:00 → 15:30 | Freeze. Two full demo rehearsals, both roles. Submit. | | | |
 
