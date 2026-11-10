@@ -20,6 +20,8 @@ export function WorkerHome() {
   const seen = useRef<Set<number> | null>(null)
 
   useEffect(() => { if (me && !me.worker) navigate('/worker/onboard', true) }, [me])
+  // Jobs done and rating change while the worker is on other screens: fetch them fresh each time home opens.
+  useEffect(() => { api.me().then(setMe, () => undefined) }, [])
 
   const list = jobs.state.status === 'ready' ? jobs.state.data : []
   const active = list.find((j) => j.status === 'confirmed' || j.status === 'in_progress')

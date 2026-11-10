@@ -6,6 +6,7 @@ import { Alert, AudioMessage, Badge, JobCard, Keypad, Skeletons, StatePanel, Tim
 import type { Job, Message } from '../contract'
 import { api, isWorkerBusy, MOCK, type Me } from '../lib/api'
 import { play, toast, useRecorder } from '../lib/audio'
+import { errorText } from '../lib/errors'
 import { MOCK_WORKER_ID } from '../lib/mocks'
 import { useT } from '../lib/i18n'
 import { Link, navigate, Redirect } from '../lib/router'
@@ -24,8 +25,10 @@ function JobPage({ id, screen, poll, children }: { id: number; screen: string; p
   if (job.state.status === 'loading') return <Task screen={screen} worker={worker}><Skeletons count={2} /></Task>
   if (job.state.status === 'error') return (
     <Task screen={screen} worker={worker}>
-      <StatePanel kind="error" title={t('Couldn’t load this job', 'کام نہیں مل سکا')} text={t('Check your connection and try again.', 'انٹرنیٹ دیکھیں اور دوبارہ کوشش کریں۔')} />
-      <button className="button full" type="button" onClick={job.reload}><Icon name="RefreshCw" />{t('Try again', 'دوبارہ کوشش کریں')}</button>
+      <StatePanel kind="error" title={t('Couldn’t load this job', 'کام نہیں مل سکا')} text={errorText(job.state.error, t)} />
+      {(job.state.error as { status?: number }).status === 404
+        ? <Link className="button full" href="/app/jobs"><Icon name="BriefcaseBusiness" />{t('See your jobs', 'اپنے کام دیکھیں')}</Link>
+        : <button className="button full" type="button" onClick={job.reload}><Icon name="RefreshCw" />{t('Try again', 'دوبارہ کوشش کریں')}</button>}
     </Task>
   )
   return <>{children(job.state.data, me, job.reload)}</>
@@ -61,7 +64,7 @@ function Offer({ m, job, me, onDone }: { m: Message; job: Job; me: Me; onDone: (
   const worker = me.user.role === 'worker'
   const mine = m.sender_id === me.user.id
   const [busy, setBusy] = useState(false)
-  const first = job.worker.name.split(' ').slice(-1)[0]
+  const first = job.worker.name
   async function answer(accept: boolean) {
     setBusy(true)
     try {
@@ -113,7 +116,7 @@ export function Chat({ id }: { id: number }) {
     <JobPage id={id} screen="15-customer-chat" poll={4000}>
       {({ job, messages }, me, reload) => {
         const worker = me.user.role === 'worker'
-        const first = job.worker.name.split(' ').slice(-1)[0]
+        const first = job.worker.name
         if (busy) return (
           <Task screen="15-customer-chat" worker={worker}>
             <div className="section-heading">
@@ -258,7 +261,7 @@ export function JobStatus({ id }: { id: number }) {
     <JobPage id={id} screen="19-customer-job" poll={5000}>
       {({ job }, me, reload) => {
         const worker = me.user.role === 'worker'
-        const first = job.worker.name.split(' ').slice(-1)[0]
+        const first = job.worker.name
         async function move(status: 'in_progress' | 'completed') {
           setState('saving')
           try {
@@ -425,7 +428,7 @@ export function ReviewJob({ id }: { id: number }) {
           }
         }
         const recording = rec.state === 'recording'
-        const first = job.worker.name.split(' ').slice(-1)[0]
+        const first = job.worker.name
         return (
           <Task screen="22-customer-review" aside={<JobAside job={job} worker={false} />}>
             <Timeline status={job.status} />

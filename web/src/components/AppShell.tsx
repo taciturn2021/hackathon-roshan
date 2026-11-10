@@ -2,10 +2,11 @@ import { createContext, useRef, type ReactNode } from 'react'
 import { useToast } from '../lib/audio'
 import { MOCK } from '../lib/api'
 import { LangSwitch, useLang, useT } from '../lib/i18n'
-import { Link, useLocation } from '../lib/router'
+import { Link, navigate, useLocation } from '../lib/router'
 import { signOut, useMe } from '../lib/session'
 import { initials } from '../lib/trades'
 import { Icon, type IconName } from './Icon'
+import { Wordmark } from './Wordmark'
 
 /** True inside the signed-in app, so shared page layouts drop their marketing container. */
 export const InApp = createContext(false)
@@ -29,8 +30,7 @@ function SidebarContent({ nav, path, worker, name, onNavigate }: { nav: NavItem[
   return (
     <>
       <Link className="app-brand" href="/app" onClick={onNavigate}>
-        <span className="brand-mark"><Icon name="Sunrise" /></span>
-        <span lang="en" dir="ltr">Roshan Rozgar</span>
+        <Wordmark />
       </Link>
       <nav className="app-nav" aria-label={t('App navigation', 'مینو')}>
         {nav.map((item) => (
@@ -65,6 +65,9 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   if (!me) return null
   const worker = me.user.role === 'worker'
   const nav = worker ? WORKER_NAV : CUSTOMER_NAV
+  // Screens below a top-level one get a back button in place of the menu button.
+  const here = nav.find((item) => item.href === path)
+  const sub = !here
   const name = me.worker?.name ?? me.user.name ?? me.user.email ?? ''
   const close = () => { drawer.current?.close(); trigger.current?.focus() }
 
@@ -78,11 +81,17 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
       </dialog>
       <div className="app-body">
         <header className="app-topbar">
-          <button ref={trigger} className="icon-button app-menu" type="button" aria-label={t('Open menu', 'مینو کھولیں')} aria-expanded="false"
+          {sub ? (
+            <button className="icon-button app-back" type="button" aria-label={t('Back', 'واپس')} onClick={() => (history.length > 1 ? history.back() : navigate('/app'))}>
+              <Icon name={ur ? 'ArrowRight' : 'ArrowLeft'} />
+            </button>
+          ) : (
+            <button ref={trigger} className="icon-button app-menu" type="button" aria-label={t('Open menu', 'مینو کھولیں')} aria-expanded="false"
             onClick={() => { drawer.current?.showModal(); trigger.current?.setAttribute('aria-expanded', 'true') }}>
             <Icon name="Menu" />
           </button>
-          <h1>{title}</h1>
+          )}
+          <h1>{here ? t(here.en, here.ur) : title}</h1>
           <LangSwitch />
           {!worker && !path.startsWith('/app/find') && (
             <Link className="button app-action" href="/app/find" aria-label={t('New request', 'نئی درخواست')}><Icon name="Plus" /><span>{t('New request', 'نئی درخواست')}</span></Link>
