@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/ai"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/identity"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/jobs"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform"
@@ -22,6 +22,7 @@ import (
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform/realtime"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/problems"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/reviews"
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/tasks"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/workers"
 )
 
@@ -105,7 +106,11 @@ func main() {
 // results back with svc.jbs.SetTranscript, svc.jbs.SetMessageSpeech, svc.jbs.SetBrief, svc.rvs.SetTags,
 // svc.wks.SetTrustSummary (each persists and pushes the WebSocket update).
 func registerTasks(mux *asynq.ServeMux, svc *services) {
-	_ = svc // replaced by e.g. tasks.Register(mux, tasks.Deps{...}) when internal/tasks lands
+	if svc.ai == nil {
+		log.Print("WARNING: AI_GATEWAY_API_KEY is not set; AI tasks stay queued until a worker with a key runs")
+		return
+	}
+	tasks.Register(mux, tasks.Deps{Jobs: svc.jbs, Reviews: svc.rvs, Workers: svc.wks, Media: svc.media, AI: svc.ai})
 }
 
 // services are the module services, shared by the api and worker modes.
@@ -119,6 +124,7 @@ type services struct {
 	jbs   *jobs.Service
 	rvs   *reviews.Service
 	prb   *problems.Service
+	ai    *ai.Service // nil without AI_GATEWAY_API_KEY: inline AI is off and the UI shows pickers
 }
 
 // newServices wires the modules together. verifier may be nil in worker mode (no HTTP auth there).
@@ -127,6 +133,9 @@ type services struct {
 // write they follow has already succeeded. Extract (onboarding AI) is wired when internal/ai lands.
 func newServices(db *pgxpool.Pool, rdb *redis.Client, verifier identity.Verifier, mediaDir string, q *queue.Client) *services {
 	s := &services{db: db, rdb: rdb, q: q, media: platform.Media{Dir: mediaDir}}
+	if os.Getenv("AI_GATEWAY_API_KEY") != "" {
+		s.ai = ai.FromEnv(rdb)
+	}
 	enqueue := func(what string, fn func(context.Context, int64) error) func(context.Context, int64) {
 		return func(ctx context.Context, id int64) {
 			if err := fn(context.WithoutCancel(ctx), id); err != nil {
@@ -158,6 +167,7 @@ func newServices(db *pgxpool.Pool, rdb *redis.Client, verifier identity.Verifier
 		PriceRange: func(ctx context.Context, trade string) (*workers.PriceRange, error) {
 			return s.jbs.PriceRange(ctx, trade)
 		},
+		Extract: s.extract(),
 	})
 	s.jbs = jobs.NewService(jobs.Deps{
 		DB: db, Media: s.media, Redis: rdb, Users: s.ids, Workers: s.wks,
@@ -171,8 +181,11 @@ func newServices(db *pgxpool.Pool, rdb *redis.Client, verifier identity.Verifier
 		DB: db, Media: s.media, Redis: rdb, Jobs: s.jbs,
 		OnReviewCreated: enqueue("review analyze", q.ReviewAnalyze),
 	})
-	// Classify (problem → trade/urgency) is wired when internal/ai lands; until then the UI shows the trade picker.
-	s.prb = problems.NewService(problems.Deps{Media: s.media, PriceRange: s.jbs.PriceRange})
+	pd := problems.Deps{Media: s.media, PriceRange: s.jbs.PriceRange}
+	if s.ai != nil {
+		pd.Classify = s.ai.Classify
+	}
+	s.prb = problems.NewService(pd)
 	return s
 }
 
@@ -188,15 +201,39 @@ func buildAPI(svc *services, origins []string) *api {
 	a := &api{services: svc}
 	db, rdb := svc.db, svc.rdb
 	mux := newMux(db.Ping, func(ctx context.Context) error { return rdb.Ping(ctx).Err() }, svc.media.Dir)
-	auth := svc.ids.Middleware
 
-	// AI endpoints: 20 calls a minute per user, to protect the gateway key.
-	aiLimit := platform.RateLimit(rdb, 20, time.Minute, func(r *http.Request) string {
-		if p, ok := platform.PrincipalFrom(r.Context()); ok {
-			return fmt.Sprintf("ai:%d", p.UserID)
+	// Rate limits (Redis token buckets, shared by all api instances; Redis down = allowed).
+	limit := func(name string, n int, per time.Duration, key func(*http.Request) string) func(http.Handler) http.Handler {
+		return platform.RateLimit(rdb, name, platform.Limit{N: n, Per: per}, key)
+	}
+	// Plain API calls get generous limits that only stop floods and scripts; the tight limits are on
+	// the routes that spend AI gateway money.
+	// Per IP on everything. A whole venue can share one IP.
+	perIP := limit("ip", 1200, time.Minute, platform.ClientIP)
+	// Signing in verifies a token and may create a user: per IP.
+	sessions := limit("session", 120, time.Minute, func(r *http.Request) string {
+		if r.URL.Path == "/api/auth/session" {
+			return platform.ClientIP(r)
 		}
 		return ""
 	})
+	// Per user, after auth (r.Pattern is the matched route).
+	writes := limit("writes", 300, time.Minute, platform.WritesOnly(platform.UserKey))
+	route := func(pattern string) func(*http.Request) string {
+		return func(r *http.Request) string {
+			if r.Pattern == pattern {
+				return platform.UserKey(r)
+			}
+			return ""
+		}
+	}
+	// AI-backed writes: a chat message queues STT + Jev + LLM (voice) or LLM + TTS (customer text);
+	// a new job queues LLM + TTS for the brief.
+	chat := limit("chat", 30, time.Minute, route("POST /api/jobs/{id}/messages"))
+	newJobs := limit("jobs", 50, 10*time.Minute, route("POST /api/jobs"))
+	// Inline AI endpoints (onboarding answer, problem classification).
+	aiLimit := limit("ai", 20, time.Minute, platform.UserKey)
+	auth := func(h http.Handler) http.Handler { return svc.ids.Middleware(writes(chat(newJobs(h)))) }
 
 	svc.ids.Routes(mux, func(ctx context.Context, userID int64) (any, error) { return svc.wks.Card(ctx, userID, nil) })
 	svc.wks.Routes(mux, auth, aiLimit)
@@ -211,7 +248,7 @@ func buildAPI(svc *services, origins []string) *api {
 		return p.UserID, err
 	}))
 
-	a.handler = platform.CORS(origins)(mux)
+	a.handler = platform.CORS(origins)(perIP(sessions(mux)))
 	return a
 }
 
@@ -244,4 +281,12 @@ func newMux(pingDB, pingRedis func(context.Context) error, mediaDir string) *htt
 	// ponytail: media on a local volume; S3-compatible storage when the API runs on more than one host.
 	mux.Handle("GET /media/", http.StripPrefix("/media/", http.FileServer(http.Dir(mediaDir))))
 	return mux
+}
+
+// extract is the onboarding AI, or nil (no AI: the UI asks again or shows the picker).
+func (s *services) extract() func(ctx context.Context, audioPath, field string) (workers.Extracted, error) {
+	if s.ai == nil {
+		return nil
+	}
+	return s.ai.Extract
 }
