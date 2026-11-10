@@ -507,3 +507,19 @@ func TestHTTPDetail(t *testing.T) {
 func platformWithPrincipal(r *http.Request, uid int64, role string) context.Context {
 	return platform.WithPrincipal(r.Context(), platform.Principal{UserID: uid, Role: role})
 }
+
+func TestSetTrustSummary(t *testing.T) {
+	e := newEnv(t, nil)
+	ctx := context.Background()
+	w := e.worker(t, "plumber", LatLng{33.7, 73.0}, true)
+	if err := e.svc.SetTrustSummary(ctx, w, "Punctual and fair."); err != nil {
+		t.Fatal(err)
+	}
+	c, err := e.svc.Card(ctx, w, nil)
+	if err != nil || c.TrustSummary == nil || *c.TrustSummary != "Punctual and fair." {
+		t.Fatalf("card = %+v, err %v", c, err)
+	}
+	if err := e.svc.SetTrustSummary(ctx, e.user(t, "worker"), "x"); err != platform.ErrNotFound {
+		t.Fatalf("no profile: got %v", err)
+	}
+}

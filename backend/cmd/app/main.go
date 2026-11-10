@@ -16,8 +16,10 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/identity"
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/jobs"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform/realtime"
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/reviews"
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/workers"
 )
 
@@ -55,7 +57,6 @@ func main() {
 		}
 		defer db.Close()
 		rdb := redis.NewClient(redisOpt)
-		pingRedis := func(ctx context.Context) error { return rdb.Ping(ctx).Err() }
 
 		var verifier identity.Verifier
 		if pid := os.Getenv("FIREBASE_PROJECT_ID"); pid != "" {
@@ -69,43 +70,17 @@ func main() {
 		if verifier == nil {
 			log.Fatal("set FIREBASE_PROJECT_ID (or AUTH_DEV=1 for local testing)")
 		}
-		ids := identity.NewService(db, verifier)
 
-		// Same-origin in production (nginx serves web and API together); extra origins come from CORS_ORIGINS.
-		origins := csv(os.Getenv("CORS_ORIGINS"))
-		hub := realtime.NewHub(append([]string{"localhost:*", "127.0.0.1:*"}, hostsOf(origins)...))
+		a := buildAPI(db, rdb, verifier, env("MEDIA_DIR", "./media"), csv(os.Getenv("CORS_ORIGINS")))
 		go func() {
-			if err := hub.Run(ctx, rdb); err != nil {
+			if err := a.hub.Run(ctx, rdb); err != nil {
 				log.Printf("realtime hub stopped: %v", err)
 			}
 		}()
 
-		media := platform.Media{Dir: env("MEDIA_DIR", "./media")}
-		mux := newMux(db.Ping, pingRedis, media.Dir)
-
-		// AI endpoints: 20 calls a minute per user, to protect the gateway key.
-		aiLimit := platform.RateLimit(rdb, 20, time.Minute, func(r *http.Request) string {
-			if p, ok := platform.PrincipalFrom(r.Context()); ok {
-				return fmt.Sprintf("ai:%d", p.UserID)
-			}
-			return ""
-		})
-
-		// Stats, Reviews, PriceRange and Extract are wired as the reviews, jobs and ai modules land.
-		wks := workers.NewService(workers.Deps{DB: db, Media: media, Users: ids})
-		wks.Routes(mux, ids.Middleware, aiLimit)
-
-		ids.Routes(mux, func(ctx context.Context, userID int64) (any, error) {
-			return wks.Card(ctx, userID, nil)
-		})
-		mux.Handle("GET /api/ws", hub.Handler(func(r *http.Request) (int64, error) {
-			p, err := ids.Authenticate(r.Context(), platform.BearerToken(r))
-			return p.UserID, err
-		}))
-
 		addr := ":" + env("PORT", "8080")
 		log.Printf("api listening on %s", addr)
-		log.Fatal(http.ListenAndServe(addr, platform.CORS(origins)(mux)))
+		log.Fatal(http.ListenAndServe(addr, a.handler))
 	case "worker":
 		srv := asynq.NewServer(asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password}, asynq.Config{Concurrency: 5})
 		mux := asynq.NewServeMux()
@@ -114,6 +89,82 @@ func main() {
 	default:
 		log.Fatalf("unknown mode %q (use api or worker)", mode)
 	}
+}
+
+// api is the assembled HTTP app. The services are exposed for tests and the queue wiring.
+type api struct {
+	handler http.Handler
+	hub     *realtime.Hub
+	ids     *identity.Service
+	wks     *workers.Service
+	jbs     *jobs.Service
+	rvs     *reviews.Service
+}
+
+// buildAPI wires every module and mounts all routes. The caller runs hub.Run for cross-process events.
+func buildAPI(db *pgxpool.Pool, rdb *redis.Client, verifier identity.Verifier, mediaDir string, origins []string) *api {
+	a := &api{}
+	media := platform.Media{Dir: mediaDir}
+	mux := newMux(db.Ping, func(ctx context.Context) error { return rdb.Ping(ctx).Err() }, media.Dir)
+
+	a.ids = identity.NewService(db, verifier)
+	auth := a.ids.Middleware
+
+	// AI endpoints: 20 calls a minute per user, to protect the gateway key.
+	aiLimit := platform.RateLimit(rdb, 20, time.Minute, func(r *http.Request) string {
+		if p, ok := platform.PrincipalFrom(r.Context()); ok {
+			return fmt.Sprintf("ai:%d", p.UserID)
+		}
+		return ""
+	})
+
+	// Modules reference each other only through these closures, which run after all three services
+	// exist (resolving the cycle workers → reviews/jobs → workers). Extract and the queue hooks
+	// (OnJobCreated, OnVoiceMessage, OnReviewCreated) are wired when the ai and tasks packages land.
+	a.wks = workers.NewService(workers.Deps{
+		DB: db, Media: media, Users: a.ids,
+		Stats: func(ctx context.Context, ids []int64) (map[int64]workers.Stats, error) {
+			st, err := a.rvs.Stats(ctx, ids)
+			if err != nil {
+				return nil, err
+			}
+			done, err := a.jbs.JobsDone(ctx, ids)
+			if err != nil {
+				return nil, err
+			}
+			for id, n := range done {
+				s := st[id]
+				s.JobsDone = n
+				st[id] = s
+			}
+			return st, nil
+		},
+		Reviews: func(ctx context.Context, id int64) ([]workers.Review, error) { return a.rvs.ForWorker(ctx, id) },
+		PriceRange: func(ctx context.Context, trade string) (*workers.PriceRange, error) {
+			return a.jbs.PriceRange(ctx, trade)
+		},
+	})
+	a.jbs = jobs.NewService(jobs.Deps{
+		DB: db, Media: media, Redis: rdb, Users: a.ids, Workers: a.wks,
+		Reviewed: func(ctx context.Context, ids []int64) (map[int64]bool, error) { return a.rvs.Reviewed(ctx, ids) },
+		Publish:  realtime.NewPublisher(rdb).Publish,
+	})
+	a.rvs = reviews.NewService(reviews.Deps{DB: db, Media: media, Redis: rdb, Jobs: a.jbs})
+
+	a.ids.Routes(mux, func(ctx context.Context, userID int64) (any, error) { return a.wks.Card(ctx, userID, nil) })
+	a.wks.Routes(mux, auth, aiLimit)
+	a.jbs.Routes(mux, auth)
+	a.rvs.Routes(mux, auth)
+
+	// Same-origin in production; extra browser origins come from CORS_ORIGINS.
+	a.hub = realtime.NewHub(append([]string{"localhost:*", "127.0.0.1:*"}, hostsOf(origins)...))
+	mux.Handle("GET /api/ws", a.hub.Handler(func(r *http.Request) (int64, error) {
+		p, err := a.ids.Authenticate(r.Context(), platform.BearerToken(r))
+		return p.UserID, err
+	}))
+
+	a.handler = platform.CORS(origins)(mux)
+	return a
 }
 
 // hostsOf turns origins like "https://a.example.com" into WebSocket origin patterns ("a.example.com").
@@ -129,7 +180,7 @@ func hostsOf(origins []string) []string {
 	return out
 }
 
-// newMux builds the base HTTP routes; module routes are mounted on it in main.
+// newMux builds the base HTTP routes; module routes are mounted on it in buildAPI.
 func newMux(pingDB, pingRedis func(context.Context) error, mediaDir string) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {

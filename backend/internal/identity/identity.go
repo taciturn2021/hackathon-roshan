@@ -134,6 +134,24 @@ func (s *Service) Basics(ctx context.Context, ids []int64) (map[int64]Basic, err
 	return out, rows.Err()
 }
 
+// Users returns full users by id (ids that don't exist are absent).
+func (s *Service) Users(ctx context.Context, ids []int64) (map[int64]User, error) {
+	rows, err := s.db.Query(ctx, `SELECT `+userCols+` FROM users WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[int64]User, len(ids))
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		out[u.ID] = u
+	}
+	return out, rows.Err()
+}
+
 // SetName sets the user's display name (workers confirm it during onboarding).
 func (s *Service) SetName(ctx context.Context, id int64, name string) error {
 	tag, err := s.db.Exec(ctx, `UPDATE users SET name = $2 WHERE id = $1`, id, name)

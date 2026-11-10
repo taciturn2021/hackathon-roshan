@@ -416,3 +416,18 @@ func TestBasicsAndSetName(t *testing.T) {
 		t.Fatalf("Basics = %+v", m)
 	}
 }
+
+func TestUsersBatch(t *testing.T) {
+	svc := NewService(testdb.New(t), fakeVerifier{})
+	a, err := svc.Session(context.Background(), "tok:batch-a", "customer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := svc.Users(context.Background(), []int64{a.ID, 424242})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m) != 1 || m[a.ID].Role != "customer" || m[a.ID].Email == nil {
+		t.Fatalf("Users = %+v", m)
+	}
+}

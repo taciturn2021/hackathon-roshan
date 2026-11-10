@@ -353,3 +353,12 @@ func (s *Service) Detail(ctx context.Context, id int64, from *LatLng) (WorkerDet
 	}
 	return d, nil
 }
+
+// SetTrustSummary stores the AI-written trust summary shown on the worker's profile (called from the queue).
+func (s *Service) SetTrustSummary(ctx context.Context, workerID int64, summary string) error {
+	tag, err := s.d.DB.Exec(ctx, `UPDATE worker_profiles SET trust_summary = NULLIF($2, '') WHERE user_id = $1`, workerID, summary)
+	if err == nil && tag.RowsAffected() == 0 {
+		return platform.ErrNotFound
+	}
+	return err
+}
