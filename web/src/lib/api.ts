@@ -36,6 +36,8 @@ async function http<T>(method: string, path: string, body?: unknown): Promise<T>
   if (!res.ok) {
     // The API answers errors as {"error": code, "message": text}.
     const e = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+    // Signed out or expired: session.ts clears the stored user, which sends the visitor to sign-in.
+    if (res.status === 401) window.dispatchEvent(new Event('rr:signed-out'))
     throw new ApiError(res.status, e.message ?? res.statusText, e.error)
   }
   return res.json() as Promise<T>

@@ -52,7 +52,7 @@ Icons are Lucide (ISC). Fonts are Inter and Noto Nastaliq Urdu from Google Fonts
 ## Seeded and mocked
 
 - **Seed data** (`backend/seed/seed.sql`): 40 workers, 8 customers, 95 past jobs and 90 reviews, all fictional. Review tags and trust summaries of seeded workers are written by the seed, not by the AI. Seeded accounts cannot sign in.
-- **Demo sign-in**: a Firebase test phone number (see `HUMZA-INTEGRATE.md`); no SMS is sent.
+- **Demo sign-in**: Firebase test phone numbers, so no SMS is sent. Worker `+92 300 0000001`, customer `+92 300 0000002`, code `123456` for both.
 - **Demo location**: the location screens offer "Use G-10, Islamabad", where the seeded workers are.
 - **Spoken prompts** (`web/public/audio/`): generated once with the text-to-speech model, not recorded by a person.
 - **Mock mode**: `VITE_MOCK_API=true` runs the screens on an in-browser mock backend with fictional data. It is off by default.
@@ -60,6 +60,5 @@ Icons are Lucide (ISC). Fonts are Inter and Noto Nastaliq Urdu from Google Fonts
 ## Known limitations
 
 - The web app polls every 4 to 5 seconds for new messages and job changes; it does not use the API's WebSocket yet.
-- Customers sign in with Google or email; phone sign-in is on the worker screen only.
 - Urdu speech quality was checked with generated speech, not with a wide range of real speakers and accents.
 - Media files are stored on the server's disk.

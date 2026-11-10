@@ -23,7 +23,7 @@ The contract there is complete and current: every route, shape and WebSocket eve
 4. `401 no_session` from any route means step 2 was skipped for this user. Call it, then retry.
 5. Firebase ID tokens expire after an hour. Use `getIdToken()` before each call (it refreshes), not a cached string. Reconnect the WebSocket with a fresh token.
 
-**Demo login (Firebase test number, no SMS sent):** phone `+92 300 0000001`, code `123456`.
+**Demo logins (Firebase test numbers, no SMS sent):** worker `+92 300 0000001`, customer `+92 300 0000002`; the code for both is `123456`.
 Use it instead of real numbers: Firebase allows only 10 real SMS a day.
 
 Local without Firebase: `AUTH_DEV=1` in the repo-root `.env`, then `Authorization: Bearer dev:<any-name>`. Never set it on the server.

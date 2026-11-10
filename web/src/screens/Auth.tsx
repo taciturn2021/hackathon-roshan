@@ -34,63 +34,86 @@ export function RolePick() {
   )
 }
 
-export function WorkerSignIn() {
-  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
+/** Phone number, then the SMS code. Both roles use it; `ur` shows the worker's Urdu labels and plays the error prompt. */
+function PhoneForm({ ur = false, onDone }: { ur?: boolean; onDone: () => Promise<void> }) {
+  const [step, setStep] = useState<'phone' | 'code'>('phone')
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
+  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
   const sent = useRef<ConfirmationResult | null>(null)
   const captcha = useRef<RecaptchaVerifier | null>(null)
-  const [step, setStep] = useState<'phone' | 'code'>('phone')
 
-  async function run(fn: () => Promise<unknown>) {
+  async function submit(e: FormEvent) {
+    e.preventDefault()
     setState('loading')
     try {
-      await fn()
+      if (step === 'phone') {
+        await firebase(async () => {
+          captcha.current ??= new RecaptchaVerifier(auth(), 'recaptcha', { size: 'invisible' })
+          sent.current = await signInWithPhoneNumber(auth(), '+92' + phone.replace(/^0/, ''), captcha.current)
+        })
+        setStep('code')
+      } else {
+        await firebase(() => sent.current!.confirm(code))
+        await onDone()
+      }
       setState('idle')
+    } catch {
+      setState('error')
+      if (ur) playPrompt('error').catch(() => undefined)
+    }
+  }
+  const digits = (set: (v: string) => void, max: number) => (e: { target: { value: string } }) => set(e.target.value.replace(/\D/g, '').slice(0, max))
+  const busy = state === 'loading'
+  const title = step === 'phone' ? (ur ? 'اپنا فون نمبر لکھیں' : 'Phone number') : ur ? 'میسج میں آیا کوڈ لکھیں' : 'Code from the SMS'
+  const big = { fontSize: 24, minWidth: 0 }
+
+  return (
+    <form className="stack" onSubmit={submit}>
+      {ur ? <div className="section-heading"><h1>{title}</h1></div> : <span className="field">{title}</span>}
+      {state === 'error' && (ur
+        ? <StatePanel kind="error" title="دوبارہ کوشش کریں" />
+        : <span className="field-error">That didn’t work. Check the {step === 'phone' ? 'number' : 'code'} and try again.</span>)}
+      {step === 'phone' ? (
+        <div className="row" dir="ltr" lang="en">
+          <span className="digits" style={big}>+92</span>
+          <input className="grow digits" style={big} type="tel" inputMode="numeric" autoComplete="tel-national" aria-label={title}
+            placeholder="3001234567" value={phone} onChange={digits(setPhone, 11)} />
+        </div>
+      ) : (
+        <input className="digits" style={big} dir="ltr" type="tel" inputMode="numeric" autoComplete="one-time-code" aria-label={title}
+          placeholder="123456" value={code} onChange={digits(setCode, 6)} autoFocus />
+      )}
+      <button className="button full" type="submit" disabled={busy || (step === 'phone' ? phone.length < 10 : code.length < 6)}>
+        <Icon name={busy ? 'LoaderCircle' : step === 'phone' ? (ur ? 'ArrowLeft' : 'ArrowRight') : 'Check'} />
+        {step === 'phone' ? (ur ? 'آگے' : 'Send code') : ur ? 'ٹھیک ہے' : 'Verify and sign in'}
+      </button>
+      <div id="recaptcha" />
+    </form>
+  )
+}
+
+export function WorkerSignIn() {
+  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
+  async function finish() {
+    const me = await signIn('worker')
+    navigate(me.worker ? '/app' : '/worker/onboard')
+  }
+  async function withGoogle() {
+    setState('loading')
+    try {
+      await google()
+      await finish()
     } catch {
       setState('error')
       playPrompt('error').catch(() => undefined)
     }
   }
-  async function finish() {
-    const me = await signIn('worker')
-    navigate(me.worker ? '/app' : '/worker/onboard')
-  }
-  const sendCode = () => run(async () => {
-    await firebase(async () => {
-      captcha.current ??= new RecaptchaVerifier(auth(), 'recaptcha', { size: 'invisible' })
-      sent.current = await signInWithPhoneNumber(auth(), '+92' + phone.replace(/^0/, ''), captcha.current)
-    })
-    setStep('code')
-  })
-  const verify = () => run(async () => {
-    await firebase(() => sent.current!.confirm(code))
-    await finish()
-  })
-  const digits = (set: (v: string) => void, max: number) => (e: { target: { value: string } }) => set(e.target.value.replace(/\D/g, '').slice(0, max))
-  const busy = state === 'loading'
-
   return (
     <Task screen="02-worker-signin" worker prompt="signin">
-      <div className="section-heading"><h1>{step === 'phone' ? 'اپنا فون نمبر لکھیں' : 'میسج میں آیا کوڈ لکھیں'}</h1></div>
+      <PhoneForm ur onDone={finish} />
       {state === 'error' && <StatePanel kind="error" title="دوبارہ کوشش کریں" />}
-      <form className="stack" onSubmit={(e) => { e.preventDefault(); void (step === 'phone' ? sendCode() : verify()) }}>
-        {step === 'phone' ? (
-          <div className="row" dir="ltr" lang="en">
-            <span className="price digits">+92</span>
-            <input className="grow price digits" type="tel" inputMode="numeric" autoComplete="tel-national" aria-label="فون نمبر"
-              placeholder="3001234567" value={phone} onChange={digits(setPhone, 11)} autoFocus />
-          </div>
-        ) : (
-          <input className="price digits" dir="ltr" type="tel" inputMode="numeric" autoComplete="one-time-code" aria-label="کوڈ"
-            placeholder="123456" value={code} onChange={digits(setCode, 6)} autoFocus />
-        )}
-        <button className="button full" type="submit" disabled={busy || (step === 'phone' ? phone.length < 10 : code.length < 6)}>
-          <Icon name={busy ? 'LoaderCircle' : step === 'phone' ? 'ArrowLeft' : 'Check'} />{step === 'phone' ? 'آگے' : 'ٹھیک ہے'}
-        </button>
-      </form>
-      <div id="recaptcha" />
-      <button className="button outline full" type="button" onClick={() => run(async () => { await google(); await finish() })} disabled={busy}>
+      <button className="button outline full" type="button" onClick={withGoogle} disabled={state === 'loading'}>
         <GoogleMark /><span lang="en" dir="ltr">Continue with Google</span>
       </button>
     </Task>
@@ -140,6 +163,8 @@ export function CustomerSignIn({ mode }: { mode: 'signin' | 'signup' }) {
         <h1>{signup ? 'Create your account' : 'Sign in to find a worker'}</h1>
         <p className="muted">{signup ? 'You’ll use it to book workers and review their work.' : 'Electricians, plumbers, AC technicians, carpenters and mechanics near you.'}</p>
       </div>
+      <PhoneForm onDone={async () => { await signIn('customer'); navigate(next) }} />
+      <div className="or">or</div>
       <button className="button outline full" type="button" onClick={() => go()} disabled={state === 'loading'}>
         <GoogleMark /> Continue with Google
       </button>

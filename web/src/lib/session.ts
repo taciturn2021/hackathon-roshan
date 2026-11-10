@@ -18,6 +18,8 @@ function set(next: Me | null) {
 
 export const useMe = () => useSyncExternalStore((l) => (listeners.add(l), () => void listeners.delete(l)), () => me)
 export const setMe = set
+// The API answered 401: the stored user is no longer signed in.
+window.addEventListener('rr:signed-out', () => { if (me) set(null) })
 
 /** True when sign-in screens skip Firebase: the mock backend, or dev tokens against a local API. */
 export const FAKE_AUTH = MOCK || !!DEV
