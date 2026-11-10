@@ -49,22 +49,27 @@ export type RecorderState = 'idle' | 'recording' | 'denied'
 export function useRecorder(onDone: (clip: Blob) => void) {
   const [state, setState] = useState<RecorderState>('idle')
   const rec = useRef<MediaRecorder | null>(null)
+  const mic = useRef<Promise<MediaStream> | null>(null)
   const done = useRef(onDone)
   useEffect(() => { done.current = onDone })
   // Leaving the page discards a recording in progress; without clearing onstop, stopping the tracks would send it.
   useEffect(() => () => {
-    const r = rec.current
-    if (r) { r.onstop = null; r.stream.getTracks().forEach((t) => t.stop()) }
+    if (rec.current) rec.current.onstop = null
+    void mic.current?.then((s) => s.getTracks().forEach((t) => t.stop()), () => undefined)
+    mic.current = null
   }, [])
+
+  // The microphone is opened once and kept while the screen is open. Opening it on every tap took
+  // about half a second, which cut the first words off each answer.
+  const open = () => (mic.current ??= navigator.mediaDevices.getUserMedia({ audio: true }).catch((e) => { mic.current = null; throw e }))
 
   async function toggle() {
     if (rec.current?.state === 'recording') return rec.current.stop()
+    current?.pause() // a prompt still playing would be recorded with the answer
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const r = new MediaRecorder(stream), parts: Blob[] = []
+      const r = new MediaRecorder(await open()), parts: Blob[] = []
       r.ondataavailable = (e) => parts.push(e.data)
       r.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop())
         setState('idle')
         // If the browser cannot decode its own recording, send it as it is: the fallback model takes webm.
         const raw = new File(parts, r.mimeType.includes('mp4') ? 'clip.m4a' : 'clip.webm', { type: r.mimeType })
@@ -79,5 +84,7 @@ export function useRecorder(onDone: (clip: Blob) => void) {
       else setState('denied')
     }
   }
-  return { state, toggle, reset: () => setState('idle') }
+  /** Opens the microphone ahead of the first tap (asks for permission if needed). */
+  const prepare = () => void open().catch(() => undefined)
+  return { state, toggle, prepare, reset: () => setState('idle') }
 }

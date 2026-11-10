@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Icon } from '../components/Icon'
 import { JobAside, Task } from '../components/Task'
 import { Alert, AudioMessage, Badge, JobCard, Keypad, Skeletons, StatePanel, Timeline } from '../components/ui'
@@ -97,6 +97,9 @@ export function Chat({ id }: { id: number }) {
     toast('Sending voice note…')
     api.sendVoice(id, clip).then(() => setSendError(false), () => setSendError(true))
   })
+  const role = useMe()?.user.role
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (role === 'worker') rec.prepare() }, [role])
 
   return (
     <JobPage id={id} screen="15-customer-chat" poll={4000}>

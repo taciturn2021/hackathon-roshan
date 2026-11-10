@@ -50,7 +50,7 @@ Part of the six planning documents in `docs/`. Give all six to your AI coding as
 
 1. **Role pick:** two big choice tiles stacked, worker on top. Nothing else.
 2. **Sign in:** worker frame = speaker button, large digit display with `+92` fixed and the number pad, `go` arrow; the same frame then takes the 6-digit SMS code. Below it a smaller full-width "Continue with Google" button. Customer frame = phone number field, an "or" divider, the Google button, then email and password fields with a sign in / create account toggle. Phone sign-in needs an invisible reCAPTCHA element on the page.
-3. **Voice onboarding:** one question at a time. Large icon for the current question in the centre (person, tools, map pin, calendar), a speaker button to hear it again, mic button low. Four progress dots on top that turn into green ticks as answers are understood. No spinner between questions.
+3. **Voice onboarding:** one question at a time. Large icon for the current question in the centre (person, tools, map pin, calendar), a speaker button to hear it again, mic button low. Four progress dots on top that turn into green ticks as answers are understood. Feedback sits between the question and the mic: "understanding" while the answer is read, then a green "OK" with what was understood, or a red "did not understand, say it again" with what was heard. The mic is disabled while the answer is being read. The next question appears only after the current one is settled.
 4. **Profile confirm:** card with photo placeholder, trade icon, name, area, years as icon + value rows; bottom row ✓ (`go`, wide) and mic (redo, narrow).
 5. **Worker home:** online toggle on top; below it either an empty "waiting" illustration or the incoming job card (trade icon, distance, two lines of Urdu text, speaker button, open button).
 6. **Describe problem:** text box with mic and camera buttons inside it; after analysis a result card: trade icon, urgency chips, price range, "Find workers" button.
@@ -78,3 +78,5 @@ Have a native speaker check the wording before recording.
 | `offer.mp3` | قیمت آئی ہے۔ منظور ہے تو سبز بٹن دبائیں۔ | Qeemat aayi hai. Manzoor hai to sabz button dabayen. |
 | `done.mp3` | کام مکمل ہو جائے تو یہ بٹن دبائیں۔ | Kaam mukammal ho jaye to yeh button dabayen. |
 | `error.mp3` | معاف کیجیے، دوبارہ کوشش کریں۔ | Maaf kijiye, dobara koshish karein. |
+| `ok.mp3` | ٹھیک ہے۔ | Theek hai. Plays when an onboarding answer is understood. |
+| `again.mp3` | سمجھ نہیں آیا۔ دوبارہ بولیں۔ | Samajh nahi aaya. Dobara bolein. Plays when an onboarding answer is unclear. |

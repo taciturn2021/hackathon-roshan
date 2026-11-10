@@ -69,7 +69,7 @@ Redis token buckets: the full number is available as a burst, then it refills ev
 
 **Inline:** `POST /workers/onboard` and `POST /problems`. Expect about 2–6 s.
 
-- **Onboarding: no spinner** (`docs/4-UI_UX_BRIEF.md`). When the worker releases the mic, show the tick and play the next question at once; send the answer in the background and merge the result when it returns. Wait for outstanding answers only before the profile confirm screen, and handle unclear ones there (ask once more, or the trade picker).
+- **Onboarding: one question at a time, with feedback.** After each answer the screen shows "understanding", then either what was understood (and moves on) or "did not understand" with the transcript (and asks the same question again, twice at most). The trade then falls to the icon picker; name, area and years are skipped. The microphone is opened once when the screen opens and kept, because opening it on every tap cut the first words off each answer.
 - **Describe problem: the customer waits**, because the result card is the next thing on screen. Show progress on the send button and keep the five trade icons tappable underneath, so the customer can pick a trade and move on without waiting.
 - Onboarding returns `OnboardAnswer` for one spoken answer.
   - `transcript === ""` means nothing was heard: ask again.

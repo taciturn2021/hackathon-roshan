@@ -21,29 +21,39 @@ const QUESTIONS: Record<OnboardField, { ur: string; icon: IconName; prompt: stri
 type Profile = OnboardAnswer['profile']
 const filled = (p: Profile, f: OnboardField) => p[f] !== undefined && p[f] !== ''
 
+const MAX_TRIES = 2
+
+/** One question at a time: ask, listen, say what was understood, and only then move on. */
 export function Onboard() {
   const me = useRole('worker')
   const [profile, setProfile] = useState<Profile>({})
-  const [queue, setQueue] = useState<OnboardField[]>(FIELDS)
-  const [pos, setPos] = useState(0)
-  const [retry, setRetry] = useState(false)
-  const [phase, setPhase] = useState<'asking' | 'waiting' | 'picker'>('asking')
-  const [pending, setPending] = useState(0)
-  const attempts = useRef<Record<string, number>>({})
+  const [field, setField] = useState<OnboardField>('name')
+  const [phase, setPhase] = useState<'asking' | 'thinking' | 'heard' | 'again' | 'picker'>('asking')
+  const [transcript, setTranscript] = useState('')
+  const tries = useRef(0)
   const latest = useRef<Profile>({})
   const intro = useRef<string | null>(null)
-  const field = queue[pos]
+  const live = useRef(true)
 
-  useEffect(() => { onboardDraft.clear() }, [])
-  // Only onboarding questions speak by themselves.
-  useEffect(() => {
-    if (phase === 'asking' && field) playPrompt(QUESTIONS[field].prompt).catch(() => undefined)
-  }, [phase, field, retry])
+  function finish(p: Profile) {
+    onboardDraft.set({ profile: p, intro_audio_url: intro.current })
+    navigate('/worker/location')
+  }
+  /** The next question the worker has not already answered (one answer can cover several). */
+  function next(p: Profile) {
+    if (!live.current) return
+    const rest = FIELDS.slice(FIELDS.indexOf(field) + 1).find((f) => !filled(p, f))
+    tries.current = 0
+    setTranscript('')
+    if (!rest) return finish(p)
+    setField(rest)
+    setPhase('asking')
+  }
 
   const rec = useRecorder((clip) => {
     const asked = field
-    attempts.current[asked] = (attempts.current[asked] ?? 0) + 1
-    setPending((n) => n + 1)
+    tries.current++
+    setPhase('thinking')
     api.onboard(clip, asked)
       .then((a) => {
         const defined = Object.fromEntries(Object.entries(a.profile).filter(([, v]) => v !== undefined && v !== ''))
@@ -51,29 +61,33 @@ export function Onboard() {
         latest.current = { ...latest.current, ...defined }
         if (asked === 'trade' && a.audio_url) intro.current = a.audio_url
         setProfile(latest.current)
+        setTranscript(a.transcript)
+        return filled(latest.current, asked)
+      }, () => false)
+      .then((understood) => {
+        if (!live.current) return
+        if (understood) {
+          setPhase('heard')
+          playPrompt('ok').catch(() => undefined)
+          setTimeout(() => next(latest.current), 1500)
+        } else if (tries.current < MAX_TRIES) setPhase('again')
+        else if (asked === 'trade') setPhase('picker')
+        else next(latest.current) // name, area and years are not required: carry on
       })
-      .catch(() => undefined) // an unreadable answer is asked again below
-      .finally(() => setPending((n) => n - 1))
-    const next = queue.findIndex((f, i) => i > pos && !filled(latest.current, f))
-    if (next === -1) setPhase('waiting')
-    else setPos(next)
   })
 
-  function finish(p: Profile) {
-    onboardDraft.set({ profile: p, intro_audio_url: intro.current })
-    navigate('/worker/location')
-  }
-
   useEffect(() => {
-    if (phase !== 'waiting' || pending > 0) return
-    const missing = FIELDS.filter((f) => !filled(profile, f))
-    const again = missing.filter((f) => (attempts.current[f] ?? 0) < 2)
-    if (again.length) {
-      setQueue(again); setPos(0); setRetry(true); setPhase('asking')
-    } else if (!filled(profile, 'trade')) {
-      setPhase('picker')
-    } else finish(profile)
-  }, [phase, pending, profile])
+    live.current = true
+    onboardDraft.clear()
+    rec.prepare()
+    return () => { live.current = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // Only onboarding speaks by itself: the question when it appears, and "say it again" after an unclear answer.
+  useEffect(() => {
+    if (phase === 'asking') playPrompt(QUESTIONS[field].prompt).catch(() => undefined)
+    if (phase === 'again') playPrompt('again').catch(() => undefined)
+  }, [phase, field])
 
   if (!me) return null
   if (rec.state === 'denied') return (
@@ -83,48 +97,21 @@ export function Onboard() {
       <button className="button full" type="button" onClick={rec.reset}><Icon name="RefreshCw" />دوبارہ کوشش</button>
     </Task>
   )
-  if (phase === 'waiting') return (
-    <Task screen="05-worker-onboard" worker><StatePanel kind="loading" title="جواب سمجھ رہے ہیں" /></Task>
-  )
   if (phase === 'picker') return (
     <Task screen="07-worker-trade" worker prompt="ask-trade">
       <div className="section-heading"><h1>اپنا کام چنیں</h1></div>
-      <TradeGrid ur onPick={(trade: Trade) => finish({ ...profile, trade })} />
+      <TradeGrid ur onPick={(trade: Trade) => { latest.current = { ...latest.current, trade }; setProfile(latest.current); next(latest.current) }} />
     </Task>
   )
 
   const recording = rec.state === 'recording'
-  const mic = (
-    <div className="mic-zone">
-      <button className={`mic ${recording ? 'recording' : ''}`} type="button" onClick={rec.toggle}
-        aria-label={recording ? 'جواب بھیجیں' : 'جواب دیں'} aria-pressed={recording}>
-        <Icon name="Mic" />
-      </button>
-      <p>{recording ? 'بولیں، پھر دوبارہ دبائیں' : 'بٹن دبائیں اور جواب دیں'}</p>
-    </div>
-  )
-  const replay = (
-    <button className="icon-button" type="button" aria-label="سوال سنیں" onClick={() => playPrompt(QUESTIONS[field].prompt).catch(() => toast('آواز ابھی دستیاب نہیں۔'))}>
-      <Icon name="Volume2" />
-    </button>
-  )
-
-  if (retry) return (
-    <Task screen="06-worker-followup" worker>
-      <div className="section-heading"><h1>{QUESTIONS[field].ur}</h1></div>
-      <div className="hint-row">
-        {FIELDS.map((f) => (
-          <span key={f} className={`hint ${filled(profile, f) ? 'done' : ''}`}>
-            <Icon name={QUESTIONS[f].icon} />
-            {filled(profile, f) && <span className="hint-check"><Icon name="Check" /></span>}
-          </span>
-        ))}
-      </div>
-      <div className="center">{replay}</div>
-      <p className="center digits muted">{pos + 1} / {queue.length}</p>
-      {mic}
-    </Task>
-  )
+  const busy = phase === 'thinking' || phase === 'heard'
+  const understood: Record<OnboardField, string | undefined> = {
+    name: profile.name,
+    trade: profile.trade && `${TRADES[profile.trade].ur} کا کام`,
+    area: profile.area,
+    years_exp: profile.years_exp === undefined ? undefined : `${profile.years_exp} سال`,
+  }
 
   return (
     <Task screen="05-worker-onboard" worker>
@@ -137,8 +124,21 @@ export function Onboard() {
       <div className="onboard-question">
         <div className="question-symbol"><Icon name={QUESTIONS[field].icon} /></div>
         <h1>{QUESTIONS[field].ur}</h1>
-        {replay}
-        {mic}
+        <button className="icon-button" type="button" aria-label="سوال سنیں" onClick={() => playPrompt(QUESTIONS[field].prompt).catch(() => toast('آواز ابھی دستیاب نہیں۔'))}>
+          <Icon name="Volume2" />
+        </button>
+        <div aria-live="polite" style={{ minHeight: 76, width: '100%' }}>
+          {phase === 'thinking' && <Alert title="سمجھ رہے ہیں…" />}
+          {phase === 'heard' && <Alert tone="success" title="ٹھیک ہے" text={understood[field]} />}
+          {phase === 'again' && <Alert tone="error" title="سمجھ نہیں آیا، دوبارہ بولیں" text={transcript ? `سنا گیا: ${transcript}` : undefined} />}
+        </div>
+        <div className="mic-zone">
+          <button className={`mic ${recording ? 'recording' : ''}`} type="button" onClick={rec.toggle} disabled={busy}
+            aria-label={recording ? 'جواب بھیجیں' : 'جواب دیں'} aria-pressed={recording}>
+            <Icon name={phase === 'thinking' ? 'LoaderCircle' : 'Mic'} />
+          </button>
+          <p>{recording ? 'بولیں، پھر دوبارہ دبائیں' : busy ? 'ذرا رکیں' : 'بٹن دبائیں اور جواب دیں'}</p>
+        </div>
       </div>
     </Task>
   )
