@@ -211,7 +211,6 @@
 .lang-switch{min-height:44px;padding:0 14px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--foreground);font:600 14px/1 var(--font-sans);cursor:pointer;white-space:nowrap}
 .lang-switch[lang=ur]{font:600 16px/1.9 var(--font-urdu)}
 .lang-switch:hover{background:var(--accent)}
-.app-sidebar .lang-switch,.app-drawer .lang-switch{align-self:flex-start;margin:8px 16px}
 
 /* Status card: one colour and icon per state, so screens are told apart without reading */
 .hero-card{display:flex;align-items:center;gap:16px;padding:20px;border-radius:20px;border:2px solid transparent}
@@ -527,3 +526,10 @@ html[lang=ur] :is(.tile-label,.data-table th,.badge,.eyebrow,.step-rail li,.flow
 .step-rail li[aria-current]>span{background:#B45309;border-color:#B45309;color:#fff}
 .feed-icon.done{background:var(--sage);color:var(--ink)}
 .empty-panel .empty-art{background:#FEF3C7;color:#B45309}
+/* The jobs table never scrolls sideways: the description column takes the spare width and shortens with an ellipsis. */
+@media(min-width:701px){
+  .data-table td:first-child{width:100%;max-width:0}
+  .row-link>span:last-child{min-width:0;overflow:hidden}
+  .data-table .clamp{max-width:100%}
+  .data-table th,.data-table td{padding-inline:12px}
+}

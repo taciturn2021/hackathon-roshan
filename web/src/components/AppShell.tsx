@@ -39,7 +39,6 @@ function SidebarContent({ nav, path, worker, name, onNavigate }: { nav: NavItem[
           </Link>
         ))}
       </nav>
-      <LangSwitch />
       <div className="app-user">
         <span className="avatar">{initials(name || '?')}</span>
         <div className="grow">
