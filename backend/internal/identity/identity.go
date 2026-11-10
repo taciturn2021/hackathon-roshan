@@ -16,6 +16,7 @@ import (
 type User struct {
 	ID       int64   `json:"id"`
 	Email    *string `json:"email"`
+	Phone    *string `json:"phone"`
 	Role     string  `json:"role"`
 	Name     *string `json:"name"`
 	PhotoURL *string `json:"photo_url"`
@@ -23,7 +24,7 @@ type User struct {
 
 // Token is what a verified Firebase ID token tells us about the signed-in account.
 type Token struct {
-	UID, Email, Name, Picture string
+	UID, Email, Phone, Name, Picture string
 }
 
 // Verifier checks an ID token and returns its claims. Invalid or expired tokens return an error.
@@ -41,11 +42,11 @@ func NewService(db *pgxpool.Pool, v Verifier) *Service { return &Service{db: db,
 
 var errNoSession = &platform.Error{Status: 401, Code: "no_session", Message: "call POST /api/auth/session after signing in"}
 
-const userCols = `id, email, role, name, photo_url`
+const userCols = `id, email, phone, role, name, photo_url`
 
 func scanUser(row pgx.Row) (User, error) {
 	var u User
-	err := row.Scan(&u.ID, &u.Email, &u.Role, &u.Name, &u.PhotoURL)
+	err := row.Scan(&u.ID, &u.Email, &u.Phone, &u.Role, &u.Name, &u.PhotoURL)
 	return u, err
 }
 
@@ -77,7 +78,7 @@ func (s *Service) Authenticate(ctx context.Context, idToken string) (platform.Pr
 }
 
 // Session returns the user for idToken, creating it on first sign-in with the given role
-// and the name/photo from the Google account. role is ignored for an existing user.
+// and the name/photo (Google) or phone number (phone sign-in) from the token. role is ignored for an existing user.
 func (s *Service) Session(ctx context.Context, idToken, role string) (User, error) {
 	t, err := s.verify(ctx, idToken)
 	if err != nil {
@@ -91,9 +92,9 @@ func (s *Service) Session(ctx context.Context, idToken, role string) (User, erro
 		return User{}, platform.BadRequest("role must be worker or customer")
 	}
 	// ON CONFLICT covers two first sign-ins racing (e.g. a double tap); the loser reads the winner's row.
-	_, err = s.db.Exec(ctx, `INSERT INTO users (firebase_uid, email, role, name, photo_url)
-		VALUES ($1, NULLIF($2, ''), $3, NULLIF($4, ''), NULLIF($5, ''))
-		ON CONFLICT (firebase_uid) DO NOTHING`, t.UID, t.Email, role, t.Name, t.Picture)
+	_, err = s.db.Exec(ctx, `INSERT INTO users (firebase_uid, email, phone, role, name, photo_url)
+		VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), $4, NULLIF($5, ''), NULLIF($6, ''))
+		ON CONFLICT (firebase_uid) DO NOTHING`, t.UID, t.Email, t.Phone, role, t.Name, t.Picture)
 	if err != nil {
 		return User{}, fmt.Errorf("create user: %w", err)
 	}

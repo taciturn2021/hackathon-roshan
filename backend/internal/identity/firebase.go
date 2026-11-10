@@ -40,7 +40,7 @@ func (f firebaseVerifier) Verify(ctx context.Context, idToken string) (Token, er
 		return Token{}, err
 	}
 	claim := func(k string) string { s, _ := t.Claims[k].(string); return s }
-	return Token{UID: t.UID, Email: claim("email"), Name: claim("name"), Picture: claim("picture")}, nil
+	return Token{UID: t.UID, Email: claim("email"), Phone: claim("phone_number"), Name: claim("name"), Picture: claim("picture")}, nil
 }
 
 // DevVerifier accepts tokens of the form "dev:<uid>" (for curl, seed checks and the race test)

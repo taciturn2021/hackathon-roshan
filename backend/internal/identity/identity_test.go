@@ -431,3 +431,27 @@ func TestUsersBatch(t *testing.T) {
 		t.Fatalf("Users = %+v", m)
 	}
 }
+
+// Phone sign-in: the token carries only a phone number (no email, name or picture).
+func TestSessionPhoneSignIn(t *testing.T) {
+	svc := newSvc(t, map[string]Token{"phone-tok": {UID: "ph1", Phone: "+923001234567"}})
+	u, err := svc.Session(context.Background(), "phone-tok", "worker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Phone == nil || *u.Phone != "+923001234567" || u.Email != nil || u.Name != nil || u.PhotoURL != nil {
+		t.Fatalf("user = %+v", u)
+	}
+	b, _ := json.Marshal(u)
+	if !strings.Contains(string(b), `"phone":"+923001234567"`) || !strings.Contains(string(b), `"email":null`) {
+		t.Fatalf("json = %s", b)
+	}
+	// Google sign-in users have phone null in JSON.
+	g, err := svc.Session(context.Background(), "tok:g1", "customer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := json.Marshal(g); !strings.Contains(string(b), `"phone":null`) {
+		t.Fatalf("google user json = %s", b)
+	}
+}

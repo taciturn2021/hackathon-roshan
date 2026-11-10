@@ -38,7 +38,7 @@ Part of the six planning documents in `docs/`. Give all six to your AI coding as
 | Mic button | 96px circle, `go` idle → `stop` while held, pulsing ring while recording, spinner while thinking |
 | Speaker button | 48px round button with a speaker icon. One at the top of every worker screen (reads the instruction) and one on every job card and received message. Plays on tap only; shows a small spinner if the audio is not ready yet |
 | Big choice tile | Half-width picture tile, 140px tall, icon + one word; used for role and trade pickers |
-| Number pad | 3×4 grid, 64px keys; used for price offers |
+| Number pad | 3×4 grid, 64px keys; used for phone number, SMS code and price offers |
 | Worker card | Photo 56px, name, trade icon, distance, ★ rating, jobs done; whole card is the tap target |
 | Trust card | AI summary sentence, tag chips, review list with play buttons |
 | Offer card | Price in 32px digits, "Rs", ✓ (`go`) and ✗ (`stop`) buttons 56px tall; greyed once answered |
@@ -49,7 +49,7 @@ Part of the six planning documents in `docs/`. Give all six to your AI coding as
 ## Layout per screen
 
 1. **Role pick:** two big choice tiles stacked, worker on top. Nothing else.
-2. **Sign in:** worker frame = audio prompt bar and one full-width "Continue with Google" button (Google logo, 72px tall), nothing else. Customer frame = the same Google button, an "or" divider, then email and password fields with a sign in / create account toggle.
+2. **Sign in:** worker frame = speaker button, large digit display with `+92` fixed and the number pad, `go` arrow; the same frame then takes the 6-digit SMS code. Below it a smaller full-width "Continue with Google" button. Customer frame = phone number field, an "or" divider, the Google button, then email and password fields with a sign in / create account toggle. Phone sign-in needs an invisible reCAPTCHA element on the page.
 3. **Voice onboarding:** one question at a time. Large icon for the current question in the centre (person, tools, map pin, calendar), a speaker button to hear it again, mic button low. Four progress dots on top that turn into green ticks as answers are understood. No spinner between questions.
 4. **Profile confirm:** card with photo placeholder, trade icon, name, area, years as icon + value rows; bottom row ✓ (`go`, wide) and mic (redo, narrow).
 5. **Worker home:** online toggle on top; below it either an empty "waiting" illustration or the incoming job card (trade icon, distance, two lines of Urdu text, speaker button, open button).

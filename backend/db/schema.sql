@@ -3,6 +3,7 @@ CREATE TABLE users (
   id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   firebase_uid TEXT NOT NULL UNIQUE,   -- Firebase Auth user id; seeded users use 'seed-<n>'
   email      TEXT,
+  phone      TEXT,                    -- E.164, from Firebase phone sign-in
   role       TEXT NOT NULL CHECK (role IN ('worker','customer')),
   name       TEXT,                    -- prefilled from the Google account
   photo_url  TEXT,                    -- prefilled from the Google account
