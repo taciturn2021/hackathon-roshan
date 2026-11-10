@@ -1,8 +1,11 @@
 name: CI
+# Manual only. Run it with: gh workflow run CI --ref <branch>
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:

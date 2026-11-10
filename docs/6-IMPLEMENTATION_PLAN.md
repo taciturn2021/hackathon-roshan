@@ -21,7 +21,7 @@ web/                                                 → Abdul Muizz
 
 **Merge rules**
 - Short branches, small PRs, only Humza merges to `main`. Stay inside your folders.
-- CI on every PR: `go vet`, `go test ./...`, `tsc --noEmit`, `eslint`.
+- CI is manual only (`gh workflow run CI --ref <branch>`); Humza runs it before merging when needed. It checks: `go vet`, `go test ./...`, `tsc --noEmit`, `eslint`.
 - Two tests are mandatory: the race test (two concurrent accepts → exactly one succeeds, the other gets 409) and one browser test of the full flow.
 
 **README must list** (rules require it): setup, stack, every AI service and model, AI coding assistants used, what is seeded (workers, jobs, reviews), what is mocked (OTP), known limitations.
