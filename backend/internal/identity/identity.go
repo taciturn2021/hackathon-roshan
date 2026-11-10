@@ -109,6 +109,40 @@ func (s *Service) Get(ctx context.Context, id int64) (User, error) {
 	return u, err
 }
 
+// Basic is the public part of a user that other modules show (worker cards, job parties).
+type Basic struct {
+	Name     *string
+	PhotoURL *string
+}
+
+// Basics returns name and photo for each id that exists.
+func (s *Service) Basics(ctx context.Context, ids []int64) (map[int64]Basic, error) {
+	rows, err := s.db.Query(ctx, `SELECT id, name, photo_url FROM users WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[int64]Basic, len(ids))
+	for rows.Next() {
+		var id int64
+		var b Basic
+		if err := rows.Scan(&id, &b.Name, &b.PhotoURL); err != nil {
+			return nil, err
+		}
+		out[id] = b
+	}
+	return out, rows.Err()
+}
+
+// SetName sets the user's display name (workers confirm it during onboarding).
+func (s *Service) SetName(ctx context.Context, id int64, name string) error {
+	tag, err := s.db.Exec(ctx, `UPDATE users SET name = $2 WHERE id = $1`, id, name)
+	if err == nil && tag.RowsAffected() == 0 {
+		return platform.ErrNotFound
+	}
+	return err
+}
+
 // Middleware requires a signed-in user with a session and puts their Principal on the context.
 func (s *Service) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

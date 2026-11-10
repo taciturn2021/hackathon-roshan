@@ -394,3 +394,25 @@ func TestDevVerifier(t *testing.T) {
 		}
 	}
 }
+
+func TestBasicsAndSetName(t *testing.T) {
+	svc := NewService(testdb.New(t), fakeVerifier{})
+	ctx := context.Background()
+	a, err := svc.Session(ctx, "tok:basics-a", "worker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SetName(ctx, a.ID, "Akram"); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SetName(ctx, 999999, "x"); err != platform.ErrNotFound {
+		t.Fatalf("SetName missing user: got %v, want ErrNotFound", err)
+	}
+	m, err := svc.Basics(ctx, []int64{a.ID, 999999})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m) != 1 || m[a.ID].Name == nil || *m[a.ID].Name != "Akram" || m[a.ID].PhotoURL == nil {
+		t.Fatalf("Basics = %+v", m)
+	}
+}
