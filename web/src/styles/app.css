@@ -194,6 +194,11 @@
 @keyframes slide-in-rtl{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
 @keyframes ring{0%{box-shadow:0 0 0 0 var(--destructive-soft)}70%{box-shadow:0 0 0 16px transparent}100%{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){*,*::before{animation:none!important;transition:none!important}}
+/* Loading spinner (LoaderCircle gets .spin in Icon). It is the only sign that a tap registered, so it keeps
+   turning under reduced motion too, just slower. */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .8s linear infinite;transform-origin:center}
+@media(prefers-reduced-motion:reduce){.spin{animation:spin 1.6s linear infinite!important}}
 @media(max-width:479px){.app-action span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.app-action{width:44px;padding:0}}
 .worker .stat-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
 .tile-value{white-space:nowrap}
