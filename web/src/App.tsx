@@ -80,8 +80,8 @@ export default function App() {
   return (
     <Shell>
       <Task screen="not-found" wide>
-        <StatePanel kind="error" icon="CircleHelp" title="Page not found" text="This page doesn’t exist." />
-        <Link className="button full" href="/">Go home</Link>
+        <StatePanel kind="error" icon="CircleHelp" title={title} text={lang === 'ur' ? 'یہ صفحہ موجود نہیں۔' : 'This page doesn’t exist.'} />
+        <Link className="button full" href="/">{lang === 'ur' ? 'ہوم پر جائیں' : 'Go home'}</Link>
       </Task>
     </Shell>
   )

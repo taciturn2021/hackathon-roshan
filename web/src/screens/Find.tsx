@@ -193,7 +193,7 @@ export function WorkerList() {
         </>
       ) : (
         <>
-          <div className="section-heading"><h1>{t(`${tr.en}s near you`, `آپ کے قریب ${tr.ur} کے کاریگر`)}</h1><p className="muted">{t('Only workers who are free right now', 'صرف وہ کاریگر جو ابھی فارغ ہیں')}</p></div>
+          <div className="section-heading"><h1>{t(`${tr.en}s near you`, `آپ کے قریب ${tr.ur}`)}</h1><p className="muted">{t('Only workers who are free right now', 'صرف وہ کاریگر جو ابھی فارغ ہیں')}</p></div>
           <div className="row between">
             <span className="row caption muted"><Icon name="MapPin" className="icon-sm" />{t(`Within ${radius_km} km`, `${radius_km} کلومیٹر کے اندر`)}</span>
             <span className="caption muted">{t('Nearest first', 'سب سے قریب پہلے')}</span>

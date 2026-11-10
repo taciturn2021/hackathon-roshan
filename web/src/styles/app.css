@@ -32,7 +32,7 @@
 
 @media(min-width:1024px){
   .app-shell{grid-template-columns:264px minmax(0,1fr);background:linear-gradient(to right,var(--sidebar-deep) 264px,var(--background) 264px)}
-  [dir=rtl].app-shell{background:linear-gradient(to left,var(--sidebar-deep) 264px,var(--background) 264px)}
+  [dir=rtl] .app-shell,[dir=rtl].app-shell{background:linear-gradient(to left,var(--sidebar-deep) 264px,var(--background) 264px)}
   .app-sidebar{display:flex;position:sticky;top:0;height:100dvh;padding:24px 16px}
   .app-menu{display:none}
   .app-topbar{padding:8px 32px}
@@ -243,7 +243,10 @@
 
 /* ---------- Consistency ---------- */
 /* Stat tiles share the row evenly whatever their number, so there is never an orphan tile. */
-.stat-tiles,.worker .stat-tiles{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}
+.stat-tiles,.worker .stat-tiles{grid-template-columns:1fr 1fr}
+.stat-tiles>*{min-width:0;overflow-wrap:anywhere}
+.stat-tiles>:last-child:nth-child(odd){grid-column:1 / -1}
+@media(min-width:768px){.stat-tiles,.worker .stat-tiles{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}.stat-tiles>:last-child:nth-child(odd){grid-column:auto}}
 /* On a phone a task screen shows the task only; the side guide is for wide screens. */
 @media(max-width:959px){.task-layout>.support-panel:not(.job-aside){display:none}}
 /* Back button in the app bar, on every screen below a top-level one. */

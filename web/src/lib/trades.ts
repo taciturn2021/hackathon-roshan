@@ -2,10 +2,10 @@ import type { IconName } from '../components/Icon'
 import type { JobStatus, Trade, Urgency } from '../contract'
 
 export const TRADES: Record<Trade, { icon: IconName; en: string; ur: string; blurb: string; blurbUr: string }> = {
-  electrician: { icon: 'Zap', en: 'Electrician', ur: 'بجلی', blurb: 'Lights, switches & wiring', blurbUr: 'لائٹ، سوئچ اور وائرنگ' },
-  plumber: { icon: 'Droplets', en: 'Plumber', ur: 'پانی', blurb: 'Leaks, taps & pipes', blurbUr: 'لیکیج، نل اور پائپ' },
-  ac_technician: { icon: 'Snowflake', en: 'AC technician', ur: 'اے سی', blurb: 'Cooling, cleaning & care', blurbUr: 'ٹھنڈک، صفائی اور سروس' },
-  carpenter: { icon: 'Hammer', en: 'Carpenter', ur: 'بڑھئی', blurb: 'Doors, furniture & fittings', blurbUr: 'دروازے، فرنیچر اور فٹنگ' },
+  electrician: { icon: 'Zap', en: 'Electrician', ur: 'الیکٹریشن', blurb: 'Lights, switches & wiring', blurbUr: 'لائٹ، سوئچ اور وائرنگ' },
+  plumber: { icon: 'Droplets', en: 'Plumber', ur: 'پلمبر', blurb: 'Leaks, taps & pipes', blurbUr: 'لیکیج، نل اور پائپ' },
+  ac_technician: { icon: 'Snowflake', en: 'AC technician', ur: 'اے سی ٹیکنیشن', blurb: 'Cooling, cleaning & care', blurbUr: 'ٹھنڈک، صفائی اور سروس' },
+  carpenter: { icon: 'Hammer', en: 'Carpenter', ur: 'کارپینٹر', blurb: 'Doors, furniture & fittings', blurbUr: 'دروازے، فرنیچر اور فٹنگ' },
   mechanic: { icon: 'Wrench', en: 'Mechanic', ur: 'مکینک', blurb: 'Everyday mechanical repairs', blurbUr: 'گاڑی اور بائیک کی مرمت' },
 }
 export const TRADE_KEYS = Object.keys(TRADES) as Trade[]

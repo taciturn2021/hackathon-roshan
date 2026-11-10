@@ -68,7 +68,7 @@ export function Onboard() {
         const defined = Object.fromEntries(Object.entries(a.profile).filter(([, v]) => v !== undefined && v !== ''))
         if (asked === 'trade' && a.confidence < 0.6) delete defined.trade // unsure: ask again, then the picker
         latest.current = { ...latest.current, ...defined }
-        if (asked === 'trade' && a.audio_url) intro.current = a.audio_url
+        if (asked === 'trade' && defined.trade && a.audio_url) intro.current = a.audio_url // only an understood answer becomes the spoken introduction
         setProfile(latest.current)
         setTranscript(a.transcript)
         return filled(latest.current, asked)
@@ -81,7 +81,11 @@ export function Onboard() {
           setTimeout(() => next(latest.current), 1500)
         } else if (tries.current < MAX_TRIES) setPhase('again')
         else if (asked === 'trade') setPhase('picker')
-        else next(latest.current) // name, area and years are not required: carry on
+        else {
+          // name, area and years are not required: say it was skipped and carry on
+          toast(t('Skipped this question. You can answer again at the end.', 'یہ سوال چھوڑ دیا۔ آخر میں دوبارہ بتا سکتے ہیں۔'))
+          next(latest.current)
+        }
       })
   })
 
@@ -193,13 +197,20 @@ export function WorkerConfirm() {
   useEffect(() => { if (!p.trade) navigate('/worker/onboard', true) }, [p.trade])
   if (!me || !p.trade) return null
   const trade = p.trade
+  // Anything not answered this time keeps the value the profile already has.
+  const had = me.worker
+  const name = p.name || had?.name || me.user.name || 'Kaarigar'
+  const area = p.area ?? had?.area ?? null
+  const years = p.years_exp ?? had?.years_exp ?? null
+  const intro = draft.intro_audio_url ?? had?.intro_audio_url ?? null
+  const missing = [!p.name && !had?.name && t('name', 'نام'), area === null && t('area', 'علاقہ'), years === null && t('years of experience', 'تجربہ')].filter(Boolean)
 
   async function save() {
     setState('saving')
     try {
       const worker = await api.saveWorker({
-        name: p.name || me!.user.name || 'Kaarigar', trade, skills: p.skills ?? [], years_exp: p.years_exp ?? null,
-        area: p.area ?? null, lat: draft.lat, lng: draft.lng, intro_audio_url: draft.intro_audio_url,
+        name, trade, skills: p.skills ?? [], years_exp: years, area,
+        lat: draft.lat, lng: draft.lng, intro_audio_url: intro,
       })
       setMe({ ...me!, worker })
       onboardDraft.clear()
@@ -215,16 +226,19 @@ export function WorkerConfirm() {
       <SignupSteps at={2} />
       <Hero tone="go" icon="CircleCheck" title={t('Is this right?', 'کیا معلومات ٹھیک ہیں؟')} hint={t('Green button to save. Microphone to answer again.', 'ٹھیک ہیں تو سبز بٹن دبائیں۔ دوبارہ بولنے کے لیے مائیک دبائیں۔')} />
       {state === 'error' && <Alert tone="error" title={t('Not saved. Try again.', 'محفوظ نہیں ہوا۔ دوبارہ کوشش کریں۔')} />}
+      {missing.length > 0 && (
+        <Alert title={t('Not heard: ', 'یہ نہیں سنا گیا: ') + missing.join(t(', ', '، '))} text={t('You can save now, or press the microphone to answer again.', 'ابھی محفوظ کر سکتے ہیں، یا دوبارہ بتانے کے لیے مائیک دبائیں۔')} />
+      )}
       <section className="card">
         <div className="profile-header">
-          <span className="avatar large digits">{initials(p.name ?? '?')}</span>
+          <span className="avatar large digits">{initials(name)}</span>
           <span className="trade-icon"><Icon name={TRADES[trade].icon} className="icon-lg" /></span>
-          {p.name && <h1>{p.name}</h1>}
+          <h1 dir="auto">{name}</h1>
         </div>
         <div className="icon-detail"><Icon name={TRADES[trade].icon} /><span>{t(`${TRADES[trade].en} work`, `${TRADES[trade].ur} کا کام`)}</span></div>
-        {p.area && <div className="icon-detail"><Icon name="MapPin" /><span className="digits">{p.area}</span></div>}
-        {p.years_exp !== undefined && <div className="icon-detail"><Icon name="Calendar" /><span className="digits">{p.years_exp}</span><span>{t('years', 'سال')}</span></div>}
-        {draft.intro_audio_url && <AudioMessage url={draft.intro_audio_url} ur />}
+        {area && <div className="icon-detail"><Icon name="MapPin" /><span className="digits">{area}</span></div>}
+        {years !== null && <div className="icon-detail"><Icon name="Calendar" /><span className="digits">{years}</span><span>{t('years', 'سال')}</span></div>}
+        {intro && <AudioMessage url={intro} ur />}
       </section>
       <div className="row">
         <button className="button grow" type="button" onClick={save} disabled={state === 'saving'}>

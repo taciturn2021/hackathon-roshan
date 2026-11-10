@@ -66,7 +66,8 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   const worker = me.user.role === 'worker'
   const nav = worker ? WORKER_NAV : CUSTOMER_NAV
   // Screens below a top-level one get a back button in place of the menu button.
-  const sub = !nav.some((item) => item.href === path)
+  const here = nav.find((item) => item.href === path)
+  const sub = !here
   const name = me.worker?.name ?? me.user.name ?? me.user.email ?? ''
   const close = () => { drawer.current?.close(); trigger.current?.focus() }
 
@@ -90,7 +91,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
             <Icon name="Menu" />
           </button>
           )}
-          <h1>{title}</h1>
+          <h1>{here ? t(here.en, here.ur) : title}</h1>
           <LangSwitch />
           {!worker && !path.startsWith('/app/find') && (
             <Link className="button app-action" href="/app/find" aria-label={t('New request', 'نئی درخواست')}><Icon name="Plus" /><span>{t('New request', 'نئی درخواست')}</span></Link>

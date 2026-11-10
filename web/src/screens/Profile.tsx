@@ -28,7 +28,7 @@ export function WorkerProfile({ id }: { id: number }) {
   )
   const w = s.data
   const tr = TRADES[w.trade]
-  const first = w.name.split(' ').slice(-1)[0]
+  const first = w.name
   const canRequest = draft.lat !== null && draft.lng !== null
 
   async function request() {
@@ -108,7 +108,7 @@ export function OwnProfile() {
   const me = useRole('worker')
   const t = useT()
   const id = me?.worker?.id ?? 0
-  const worker = useLoad(() => api.getWorker(id), [id])
+  const worker = useLoad(() => (id ? api.getWorker(id) : new Promise<never>(() => undefined)), [id]) // no worker: the role check redirects
   if (!me) return null
   const s = worker.state
   if (s.status === 'loading') return <Task screen="worker-profile" worker wide><Skeletons count={2} /></Task>
