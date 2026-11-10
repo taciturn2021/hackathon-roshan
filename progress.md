@@ -8,13 +8,13 @@ A connected, responsive **website design prototype** is available locally. This 
 
 - Website: http://127.0.0.1:4173/website/
 - Every flow: http://127.0.0.1:4173/website/journeys.html
-- Files: `design/website/`
-- Per-file checklist: `design/website/CHECKLIST.md`
-- To restart the preview from the repository root: `python -m http.server 4173 --bind 127.0.0.1 --directory design`
+- Files: `_archive/design-reference/website/`
+- Per-file checklist: `_archive/design-reference/website/CHECKLIST.md`
+- To restart the preview from the repository root: `python -m http.server 4173 --bind 127.0.0.1 --directory _archive/design-reference`
 
 ## Completed
 
-- Read the project PDF, six planning documents, repository Markdown and starter application/contracts/schema. Reviewed the supplied hero reference, Thinking Gods fonts, shadcn/ui and tweakcn Nature references; research is in `design/RESEARCH.md`.
+- Read the project PDF, six planning documents, repository Markdown and starter application/contracts/schema. Reviewed the supplied hero reference, Thinking Gods fonts, shadcn/ui and tweakcn Nature references; research is in `_archive/design-reference/RESEARCH.md`.
 - Pulled `origin/main` successfully, fast-forwarding `48c6fd1` to `13532b9`. Read all eight changed files' diffs. Preserved local design work; no changes committed or pushed.
 - Incorporated the updated guidance for four separate onboarding questions and on-demand Urdu playback for job summaries and received typed messages into `CLAUDE.md` and design patterns. The new happy-path onboarding previews four questions, then location and profile confirmation.
 - Wrote `CLAUDE.md`, design direction, website patterns and a responsive screen inventory. The latest website request authorises this connected preview; older submission exports remain preserved.
@@ -36,17 +36,17 @@ A connected, responsive **website design prototype** is available locally. This 
 
 ## Verification completed
 
-- `python design/source/verify_website.py`: all 172 pages' local links and referenced assets resolve; four onboarding question pages exist.
+- `python _archive/design-reference/source/verify_website.py`: all 172 pages' local links and referenced assets resolve; four onboarding question pages exist.
 - Browser checks: all 27 default screens at 390px and 1440px (54 checks), no horizontal overflow or JavaScript page errors.
 - Clicked through customer sign-in/discovery/booking, switched to worker start and completion, then reached the review and selected four stars.
 - Clicked through all four worker onboarding questions, location, profile confirmation and worker home.
 - Mobile drawer opens and closes with Escape. Chat price button checked at 56px wide after fixing flex shrink.
 - Gradient compiled and rendered without WebGL errors; loop endpoints differed by at most one 8-bit channel level, motion changed the field, forced unavailable-WebGL used the matching fallback, and mobile sizing respected the pixel-ratio cap.
-- Visually inspected the landing page and desktop chat. Screenshots: `design/website-desktop-preview.png`, `design/website-mobile-preview.png`, `design/website-chat-preview.png`. The chat screenshot precedes the small price-button sizing fix.
+- Visually inspected the landing page and desktop chat. Screenshots: `_archive/design-reference/website-desktop-preview.png`, `_archive/design-reference/website-mobile-preview.png`, `_archive/design-reference/website-chat-preview.png`. The chat screenshot precedes the small price-button sizing fix.
 
 ## Remaining / limitations
 
-- **Figma is not confirmed imported, uploaded or submitted. No native `.fig` file has been produced.** Existing `output/` import ZIP and submission board predate the website redesign. They must not be presented as the new website export.
+- **Figma is not confirmed imported, uploaded or submitted. No native `.fig` file has been produced.** The old `output/` import ZIP and submission board (removed in cleanup, kept in commit b18ca3e) predate the website redesign. They must not be presented as the new website export.
 - The new HTML is the reviewable prototype. Figma Auto Layout, component instances, Variables and imported layout/font fidelity still need creation/verification. Shader animation will not survive a static Figma import.
 - Authentication, microphone recording/playback, AI processing, real location, messaging, offers, booking constraints and reviews are not connected to services. Prototype navigation shows predetermined fictional AC-job outcomes. Selecting another trade or entering a price does not create a matching live job.
 - Most secondary state content was carried forward from the earlier package. Audit all onboarding recovery/loading wording against the new four-question contract before final submission; the new happy path is updated, but this is not a claim that every legacy state has been rewritten.
@@ -56,10 +56,10 @@ A connected, responsive **website design prototype** is available locally. This 
 
 ## Source files and rebuild
 
-- `design/source/build_website.py`: generates the current responsive website from existing frame content plus the new landing, shared shell and updated onboarding.
-- `design/source/website.css`: shared responsive website styles.
-- `design/source/website.js`: prototype interactions.
-- `design/source/verify_website.py`: local link/asset checks.
-- `design/mesh-gradient.html`: self-contained gradient source.
-- Rebuild with `python design/source/build_website.py`, then `python design/source/verify_website.py`.
-- The original `design/source/build.py` regenerates the older package; do not run it expecting the latest website layout or onboarding rules.
+- `_archive/design-reference/source/build_website.py`: generates the current responsive website from existing frame content plus the new landing, shared shell and updated onboarding.
+- `_archive/design-reference/source/website.css`: shared responsive website styles.
+- `_archive/design-reference/source/website.js`: prototype interactions.
+- `_archive/design-reference/source/verify_website.py`: local link/asset checks.
+- `_archive/design-reference/mesh-gradient.html`: self-contained gradient source.
+- Rebuild with `python _archive/design-reference/source/build_website.py`, then `python _archive/design-reference/source/verify_website.py`.
+- The original `_archive/design-reference/source/build.py` regenerates the older package; do not run it expecting the latest website layout or onboarding rules.
