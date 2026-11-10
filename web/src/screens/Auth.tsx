@@ -4,7 +4,7 @@ import { Task } from '../components/Task'
 import { GoogleMark, StatePanel } from '../components/ui'
 import { playPrompt } from '../lib/audio'
 import { Link, navigate, useLocation } from '../lib/router'
-import { signIn } from '../lib/session'
+import { safeNext, signIn } from '../lib/session'
 
 export function RolePick() {
   return (
@@ -52,7 +52,7 @@ export function WorkerSignIn() {
 
 export function CustomerSignIn({ mode }: { mode: 'signin' | 'signup' }) {
   const { query } = useLocation()
-  const next = query.get('next') ?? '/app'
+  const next = safeNext(query.get('next'))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})

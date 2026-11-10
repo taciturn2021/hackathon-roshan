@@ -3,10 +3,10 @@ import { MOCK } from './api'
 
 // One clip at a time, like a phone speaker.
 let current: HTMLAudioElement | null = null
-export function play(url: string): Promise<void> {
+export function play(url: string): Promise<HTMLAudioElement> {
   current?.pause()
-  current = new Audio(url)
-  return current.play()
+  const a = (current = new Audio(url))
+  return a.play().then(() => a)
 }
 /** Recorded Urdu prompts from docs/4-UI_UX_BRIEF.md, served from public/audio/. */
 export const playPrompt = (name: string) => play(`/audio/${name}.mp3`)
@@ -30,7 +30,11 @@ export function useRecorder(onDone: (clip: Blob) => void) {
   const rec = useRef<MediaRecorder | null>(null)
   const done = useRef(onDone)
   useEffect(() => { done.current = onDone })
-  useEffect(() => () => { rec.current?.stream.getTracks().forEach((t) => t.stop()) }, [])
+  // Leaving the page discards a recording in progress; without clearing onstop, stopping the tracks would send it.
+  useEffect(() => () => {
+    const r = rec.current
+    if (r) { r.onstop = null; r.stream.getTracks().forEach((t) => t.stop()) }
+  }, [])
 
   async function toggle() {
     if (rec.current?.state === 'recording') return rec.current.stop()

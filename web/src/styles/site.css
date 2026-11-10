@@ -84,7 +84,6 @@ small,.caption{font-size:15px;line-height:1.5}
 .center{text-align:center}
 .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .divider{height:1px;background:var(--border);border:0;margin:8px 0}
-.desktop{padding:64px 0;background:var(--muted)}
 .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:17px}
 .brand-mark{background:var(--primary);color:var(--primary-foreground);border-radius:12px;width:40px;height:40px;display:grid;place-items:center}
 .main-content{padding:24px 16px;display:flex;flex:1;flex-direction:column;gap:24px}
@@ -214,14 +213,8 @@ input::placeholder,textarea::placeholder{color:var(--muted-foreground);opacity:1
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{padding:16px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-mono);font-size:13px;background:var(--muted);padding:24px;border-radius:16px}
-.index{max-width:1280px;margin:auto;padding:48px 24px}
-.index h1{font-size:48px}
-.index td a{display:inline-flex;min-height:44px;align-items:center;color:var(--primary);text-decoration:underline;text-underline-offset:4px;margin-right:12px}
 @media(prefers-reduced-motion:reduce) {
   *{transition:none!important;animation:none!important}
-}
-@media print {
-  .desktop{padding:0}
 }
 .worker .price{font-family:var(--font-sans)}
 .worker .caption{line-height:1.6}

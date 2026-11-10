@@ -12,9 +12,10 @@ export function AudioMessage({ url, ur = false }: { url: string | null; ur?: boo
   const [duration, setDuration] = useState<string | null>(null)
   const start = () => {
     if (!url) return
-    play(url).catch(() => toast(ur ? NOT_READY.ur : NOT_READY.en))
-    const a = new Audio(url)
-    a.onloadedmetadata = () => setDuration(`${Math.floor(a.duration / 60)}:${String(Math.round(a.duration % 60)).padStart(2, '0')}`)
+    play(url).then((a) => {
+      // Recorded webm clips report Infinity until fully read; show no duration rather than "Infinity:NaN".
+      if (Number.isFinite(a.duration)) setDuration(`${Math.floor(a.duration / 60)}:${String(Math.round(a.duration % 60)).padStart(2, '0')}`)
+    }, () => toast(ur ? NOT_READY.ur : NOT_READY.en))
   }
   return (
     <div className="audio-message">

@@ -23,6 +23,9 @@ export async function signIn(role: User['role']) {
   return next
 }
 
+/** Where to go after sign-in: only a path on this site ("/x", not "//host" or "/\host"); anything else goes home. */
+export const safeNext = (next: string | null) => (next && /^\/(?![/\\])/.test(next) ? next : '/app')
+
 export function signOut() {
   if (MOCK) mockSignOut()
   set(null)

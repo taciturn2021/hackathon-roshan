@@ -166,9 +166,7 @@ export function WorkerLocation() {
         <Icon name={state === 'loading' ? 'LoaderCircle' : state === 'error' ? 'RefreshCw' : 'LocateFixed'} />
         {state === 'error' ? 'دوبارہ کوشش' : 'لوکیشن دیں'}
       </button>
-      {MOCK && state === 'error' && <button className="button outline full" type="button" lang="en" dir="ltr" onClick={() => go(true)}>Use demo location (G-10, Islamabad)</button>}
-      {state === 'error' && <Link className="button ghost" href="/worker/confirm">بعد میں</Link>}
-    </Task>
+      {MOCK && state === 'error' && <button className="button outline full" type="button" lang="en" dir="ltr" onClick={() => go(true)}>Use demo location (G-10, Islamabad)</button>}    </Task>
   )
 }
 

@@ -4,7 +4,7 @@ import { Shell } from './components/Shell'
 import { Task } from './components/Task'
 import { StatePanel } from './components/ui'
 import { Link, match, Redirect, useLocation } from './lib/router'
-import { useMe } from './lib/session'
+import { safeNext, useMe } from './lib/session'
 import { CustomerSignIn, RolePick, WorkerSignIn } from './screens/Auth'
 import { Dashboard } from './screens/Dashboard'
 import { CustomerLocation, Problem, ProblemConfirm, WorkerList } from './screens/Find'
@@ -69,7 +69,7 @@ export default function App() {
   if (MOVED[path]) return <Redirect to={MOVED[path] + (query.size ? `?${query}` : '')} />
   if (inApp && !me) return <Redirect to={`/login?next=${encodeURIComponent(path + (query.size ? `?${query}` : ''))}`} />
   if (inApp && worker && !me?.worker) return <Redirect to="/worker/onboard" />
-  if (!inApp && me && SIGNED_OUT_ONLY.includes(path)) return <Redirect to={query.get('next') ?? '/app'} />
+  if (!inApp && me && SIGNED_OUT_ONLY.includes(path)) return <Redirect to={safeNext(query.get('next'))} />
 
   if (hit && inApp) return <AppShell title={title}><Fragment key={path}>{hit.route.page(hit.params)}</Fragment></AppShell>
   if (hit) return <Shell key={path}>{hit.route.page(hit.params)}</Shell>
