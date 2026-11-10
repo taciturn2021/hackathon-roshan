@@ -7,11 +7,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/identity"
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform"
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/platform/realtime"
 )
 
 func env(key, fallback string) string {
@@ -21,28 +26,72 @@ func env(key, fallback string) string {
 	return fallback
 }
 
+// csv splits a comma-separated env value, dropping blanks.
+func csv(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 func main() {
 	mode := "api"
 	if len(os.Args) > 1 {
 		mode = os.Args[1]
 	}
-	redisAddr := env("REDIS_ADDR", "localhost:6379")
+	ctx := context.Background()
+	redisOpt := &redis.Options{Addr: env("REDIS_ADDR", "localhost:6379"), Password: os.Getenv("REDIS_PASSWORD")}
 
 	switch mode {
 	case "api":
-		db, err := pgxpool.New(context.Background(), env("DATABASE_URL", "postgres://roshan:roshan@localhost:5432/roshan"))
+		db, err := pgxpool.New(ctx, env("DATABASE_URL", "postgres://roshan:roshan@localhost:5432/roshan"))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer db.Close()
-		rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
+		rdb := redis.NewClient(redisOpt)
 		pingRedis := func(ctx context.Context) error { return rdb.Ping(ctx).Err() }
+
+		var verifier identity.Verifier
+		if pid := os.Getenv("FIREBASE_PROJECT_ID"); pid != "" {
+			if verifier, err = identity.NewFirebaseVerifier(ctx, pid, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")); err != nil {
+				log.Fatal(err)
+			}
+		}
+		if os.Getenv("AUTH_DEV") == "1" {
+			verifier = identity.DevVerifier(verifier)
+		}
+		if verifier == nil {
+			log.Fatal("set FIREBASE_PROJECT_ID (or AUTH_DEV=1 for local testing)")
+		}
+		ids := identity.NewService(db, verifier)
+
+		// Same-origin in production (nginx serves web and API together); extra origins come from CORS_ORIGINS.
+		origins := csv(os.Getenv("CORS_ORIGINS"))
+		hub := realtime.NewHub(append([]string{"localhost:*", "127.0.0.1:*"}, hostsOf(origins)...))
+		go func() {
+			if err := hub.Run(ctx, rdb); err != nil {
+				log.Printf("realtime hub stopped: %v", err)
+			}
+		}()
+
+		mux := newMux(db.Ping, pingRedis, env("MEDIA_DIR", "./media"))
+		// Filled in once the workers module exists; until then /me returns worker: null.
+		noWorker := func(context.Context, int64) (any, error) { return nil, nil }
+		ids.Routes(mux, noWorker)
+		mux.Handle("GET /api/ws", hub.Handler(func(r *http.Request) (int64, error) {
+			p, err := ids.Authenticate(r.Context(), platform.BearerToken(r))
+			return p.UserID, err
+		}))
 
 		addr := ":" + env("PORT", "8080")
 		log.Printf("api listening on %s", addr)
-		log.Fatal(http.ListenAndServe(addr, newMux(db.Ping, pingRedis, env("MEDIA_DIR", "./media"))))
+		log.Fatal(http.ListenAndServe(addr, platform.CORS(origins)(mux)))
 	case "worker":
-		srv := asynq.NewServer(asynq.RedisClientOpt{Addr: redisAddr}, asynq.Config{Concurrency: 5})
+		srv := asynq.NewServer(asynq.RedisClientOpt{Addr: redisOpt.Addr, Password: redisOpt.Password}, asynq.Config{Concurrency: 5})
 		mux := asynq.NewServeMux()
 		// Queue handlers from internal/tasks get registered on mux here.
 		log.Fatal(srv.Run(mux))
@@ -51,7 +100,20 @@ func main() {
 	}
 }
 
-// newMux builds the HTTP routes. Module routes get mounted here as they are written.
+// hostsOf turns origins like "https://a.example.com" into WebSocket origin patterns ("a.example.com").
+func hostsOf(origins []string) []string {
+	out := make([]string, 0, len(origins))
+	for _, o := range origins {
+		_, host, ok := strings.Cut(o, "://")
+		if !ok {
+			host = o
+		}
+		out = append(out, host)
+	}
+	return out
+}
+
+// newMux builds the base HTTP routes; module routes are mounted on it in main.
 func newMux(pingDB, pingRedis func(context.Context) error, mediaDir string) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
