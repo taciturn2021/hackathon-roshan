@@ -6,11 +6,12 @@ export type JobStatus = 'requested' | 'confirmed' | 'in_progress' | 'completed' 
 
 export type User = { id: number; email: string | null; role: 'worker' | 'customer'; name: string | null; photo_url: string | null };
 
-export type ProfileDraft = {                 // AI output, not saved yet
-  name: string | null; trade: Trade | null; trade_confidence: number;
-  skills: string[]; years_exp: number | null; area: string | null;
-  transcript: string; intro_audio_url: string;
-  missing: ('name' | 'trade' | 'area' | 'years_exp')[];   // drives the follow-up questions
+export type OnboardField = 'name' | 'trade' | 'area' | 'years_exp';
+export type OnboardAnswer = {                // AI reading of one spoken answer; nothing is saved yet
+  field: OnboardField;                // the question that was asked
+  profile: { name?: string; trade?: Trade; skills?: string[]; area?: string; years_exp?: number };
+                                      // whatever was understood; may include other fields, empty if nothing
+  confidence: number; transcript: string; audio_url: string;
 };
 
 export type WorkerCard = {
@@ -28,10 +29,13 @@ export type Problem = { trade: Trade | null; trade_confidence: number; urgency: 
 
 export type Job = { id: number; customer: User; worker: WorkerCard; trade: Trade; description: string;
              urgency: Urgency; photo_url: string | null; status: JobStatus;
-             agreed_price: number | null; brief_audio_url: string | null;   // arrives via job.updated
+             agreed_price: number | null;
+             brief_ur: string | null; brief_audio_url: string | null;   // short Urdu summary + its audio; arrive via job.updated
              created_at: string; completed_at: string | null; reviewed: boolean };
 export type Message = { id: number; job_id: number; sender_id: number; kind: 'text' | 'voice' | 'offer';
-                 body: string | null; audio_url: string | null; suggested_price: number | null;
+                 body: string | null; audio_url: string | null;
+                 body_ur: string | null; speech_url: string | null;   // typed text in Urdu script + its audio, for the worker
+                 suggested_price: number | null;
                  offer_price: number | null; offer_status: 'pending' | 'accepted' | 'rejected' | null;
                  created_at: string };
 
@@ -39,4 +43,4 @@ export type Event =
   | { type: 'job.created';     data: Job }       // to the worker
   | { type: 'job.updated';     data: Job }       // to both parties
   | { type: 'message.created'; data: Message }   // to both parties
-  | { type: 'message.updated'; data: Message };  // transcript / suggested_price filled in
+  | { type: 'message.updated'; data: Message };  // transcript, suggested_price, body_ur or speech_url filled in
