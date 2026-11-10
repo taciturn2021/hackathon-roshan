@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ type Config struct {
 	Jev, JevFallback string
 	TTS, TTSFallback string
 	Cache            *redis.Client // optional; AI results keyed by a hash of the input (TRD caching)
+	DailyCap         int           // gateway calls allowed per day across all users; 0 = no cap (needs Cache)
 }
 
 // Service is the only caller of Vercel AI Gateway.
@@ -51,7 +53,7 @@ func FromEnv(cache *redis.Client) *Service {
 		LLM: env("LLM_MODEL", "anthropic/claude-haiku-5.5"), LLMFallback: env("LLM_FALLBACK_MODEL", "openai/gpt-6-luna"),
 		Jev: env("JEV_MODEL", "typesafe-ai/jev"), JevFallback: "openai/gpt-6-luna-decisions",
 		TTS: env("TTS_MODEL", "elevenlabs/eleven-v4"), TTSFallback: "google/gemini-3.8-flash-tts",
-		Cache: cache,
+		Cache: cache, DailyCap: envInt("AI_DAILY_CAP", 3000),
 	})
 }
 
@@ -62,11 +64,46 @@ func env(key, fallback string) string {
 	return fallback
 }
 
+func envInt(key string, fallback int) int {
+	if n, err := strconv.Atoi(os.Getenv(key)); err == nil {
+		return n
+	}
+	return fallback
+}
+
+// ErrBudget means today's gateway call budget is used up. Inline AI then returns nothing (the UI
+// shows pickers) and queue tasks are dropped instead of retried.
+var ErrBudget = errors.New("daily AI budget used up")
+
+// spend counts one gateway call against today's budget (Pakistan time). Redis errors allow the call.
+func (s *Service) spend(ctx context.Context) error {
+	if s.cfg.Cache == nil || s.cfg.DailyCap <= 0 {
+		return nil
+	}
+	k := "ai:budget:" + time.Now().In(pkt).Format("2006-01-02")
+	n, err := s.cfg.Cache.Incr(ctx, k).Result()
+	if err != nil {
+		return nil
+	}
+	if n == 1 {
+		_ = s.cfg.Cache.Expire(ctx, k, 48*time.Hour).Err()
+	}
+	if n > int64(s.cfg.DailyCap) {
+		return ErrBudget
+	}
+	return nil
+}
+
+var pkt = time.FixedZone("PKT", 5*60*60)
+
 // callTimeout is per AI call (TRD).
 const callTimeout = 15 * time.Second
 
 // post sends one JSON request to the gateway and decodes the JSON answer into out.
 func (s *Service) post(ctx context.Context, path string, headers map[string]string, body, out any) error {
+	if err := s.spend(ctx); err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
 	b, err := json.Marshal(body)

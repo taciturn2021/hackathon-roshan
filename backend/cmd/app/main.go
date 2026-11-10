@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -202,15 +201,32 @@ func buildAPI(svc *services, origins []string) *api {
 	a := &api{services: svc}
 	db, rdb := svc.db, svc.rdb
 	mux := newMux(db.Ping, func(ctx context.Context) error { return rdb.Ping(ctx).Err() }, svc.media.Dir)
-	auth := svc.ids.Middleware
 
-	// AI endpoints: 20 calls a minute per user, to protect the gateway key.
-	aiLimit := platform.RateLimit(rdb, 20, time.Minute, func(r *http.Request) string {
-		if p, ok := platform.PrincipalFrom(r.Context()); ok {
-			return fmt.Sprintf("ai:%d", p.UserID)
+	// Rate limits (Redis token buckets, shared by all api instances; Redis down = allowed).
+	limit := func(name string, n int, per time.Duration, key func(*http.Request) string) func(http.Handler) http.Handler {
+		return platform.RateLimit(rdb, name, platform.Limit{N: n, Per: per}, key)
+	}
+	// Per IP on everything. Generous, because a whole venue can share one IP; it only stops floods.
+	perIP := limit("ip", 600, time.Minute, platform.ClientIP)
+	// Signing in verifies a token and may create a user: per IP.
+	sessions := limit("session", 30, time.Minute, func(r *http.Request) string {
+		if r.URL.Path == "/api/auth/session" {
+			return platform.ClientIP(r)
 		}
 		return ""
 	})
+	// Per user, after auth. Every write can queue paid AI work (a voice note → STT + Jev + LLM,
+	// a customer text → LLM + TTS, a new job → LLM + TTS, a review → Jev + LLM).
+	writes := limit("writes", 30, time.Minute, platform.WritesOnly(platform.UserKey))
+	newJobs := limit("jobs", 10, 10*time.Minute, func(r *http.Request) string {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/jobs" {
+			return platform.UserKey(r)
+		}
+		return ""
+	})
+	// Inline AI endpoints (onboarding answer, problem classification).
+	aiLimit := limit("ai", 20, time.Minute, platform.UserKey)
+	auth := func(h http.Handler) http.Handler { return svc.ids.Middleware(writes(newJobs(h))) }
 
 	svc.ids.Routes(mux, func(ctx context.Context, userID int64) (any, error) { return svc.wks.Card(ctx, userID, nil) })
 	svc.wks.Routes(mux, auth, aiLimit)
@@ -225,7 +241,7 @@ func buildAPI(svc *services, origins []string) *api {
 		return p.UserID, err
 	}))
 
-	a.handler = platform.CORS(origins)(mux)
+	a.handler = platform.CORS(origins)(perIP(sessions(mux)))
 	return a
 }
 

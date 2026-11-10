@@ -3,12 +3,15 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/taciturn2021/hackathon-roshan/backend/internal/problems"
+	"github.com/taciturn2021/hackathon-roshan/backend/internal/testdb"
 )
 
 // inlineGateway answers STT with stt, the LLM with llm, and Jev with probs.
@@ -172,3 +175,22 @@ func deref(p *int) any {
 }
 
 func toJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
+
+func TestDailyBudget(t *testing.T) {
+	rdb := testdb.Redis(t)
+	s, f := newTest(t, inlineGateway("", "ٹھیک ہے", nil)) // valid on the first model: one call each
+	s.cfg.Cache, s.cfg.DailyCap = rdb, 2
+	rdb.Del(t.Context(), "ai:budget:"+time.Now().In(pkt).Format("2006-01-02"))
+	for i, text := range []string{"a", "b"} {
+		if _, err := s.UrduMessage(t.Context(), text); errors.Is(err, ErrBudget) {
+			t.Fatalf("call %d hit the budget", i+1)
+		}
+	}
+	calls := len(f.calls)
+	if _, err := s.UrduMessage(t.Context(), "c"); !errors.Is(err, ErrBudget) {
+		t.Fatalf("want ErrBudget, got %v", err)
+	}
+	if len(f.calls) != calls {
+		t.Fatal("a call over budget still reached the gateway")
+	}
+}

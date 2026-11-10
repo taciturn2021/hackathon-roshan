@@ -85,6 +85,10 @@ func withPayload[P any](fn func(context.Context, P) error) func(context.Context,
 			return fmt.Errorf("%s payload: %v: %w", t.Type(), err, asynq.SkipRetry)
 		}
 		err := fn(ctx, p)
+		if errors.Is(err, ai.ErrBudget) {
+			log.Printf("task %s %s dropped: %v", t.Type(), t.Payload(), err)
+			return fmt.Errorf("%s: %w: %w", t.Type(), err, asynq.SkipRetry)
+		}
 		if errors.Is(err, platform.ErrNotFound) {
 			return fmt.Errorf("%s: %v: %w", t.Type(), err, asynq.SkipRetry)
 		}
